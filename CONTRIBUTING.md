@@ -37,7 +37,7 @@ Categories: `exchange, service, pool, mixer, gambling, merchant, sanctioned, oth
 accurate set beats a large sloppy one. Do not force coverage.
 
 Submit a new label, a correction, or a removal by opening a
-[label submission issue](https://github.com/Tech1k/mwebscan/issues/new?template=label_submission.md)
+[label submission issue](https://github.com/Tech1k/mwebscan.com/issues/new?template=label_submission.md)
 or emailing hello@tech1k.com with: address, entity, category, source URL or evidence,
 confidence (if known), and whether it is new / a correction / a removal. A label is a
 contribution under the grant above, so by submitting you confirm you have the right to

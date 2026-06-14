@@ -11,7 +11,7 @@
         <a href="/api-docs">API</a> &middot;
         <a href="/methodology#labels">Submit labels</a> &middot;
         <a href="/donate">Donate</a> &middot;
-        <a href="https://github.com/Tech1k/mwebscan" target="_blank" rel="noopener">Open-source</a>
+        <a href="https://github.com/Tech1k/mwebscan.com" target="_blank" rel="noopener">Open-source</a>
     </p>
     <p style="text-align:center; font-size:0.9em;">
         <a href="/terms">Terms</a> &middot;

@@ -207,7 +207,7 @@ try {
         <?php if ($recommendations && !empty($recommendations['best_pegin_amounts'])): ?>
         <div id="recommendations" style="max-width:760px; margin:24px auto; background:var(--card); box-shadow:0 0 10px var(--shadow); border-radius:8px; padding:18px;">
             <h2 class="section-title" style="margin-top:0;">Privacy Recommendations (live)</h2>
-            <p style="text-align:center; color:var(--muted);">Recommended peg-in amounts right now (largest crowds to hide in):</p>
+            <p style="text-align:center; color:var(--muted);">Recommended <strong style="color:var(--accent);">peg-in</strong> amounts (into MWEB), largest crowds to hide in:</p>
             <p style="text-align:center;">
                 <?php foreach ($recommendations['best_pegin_amounts'] as $b): ?>
                     <?php if ((float) $b['amount'] <= 0) continue; ?>
@@ -218,11 +218,11 @@ try {
                 <?php endforeach; ?>
             </p>
             <?php if (!empty($recommendations['best_pegout_amounts'])): ?>
-            <p style="text-align:center; color:var(--muted);">Recommended peg-out amounts right now (largest crowds to hide in):</p>
+            <p style="text-align:center; color:var(--muted);">Recommended <strong style="color:var(--warn);">peg-out</strong> amounts (out of MWEB), largest crowds to hide in:</p>
             <p style="text-align:center;">
                 <?php foreach ($recommendations['best_pegout_amounts'] as $b): ?>
                     <?php if ((float) $b['amount'] <= 0) continue; ?>
-                    <a class="badge service" style="margin:3px; display:inline-block; text-decoration:none;" href="/trace?q=<?php echo urlencode($b['amount']); ?>">
+                    <a class="badge exchange" style="margin:3px; display:inline-block; text-decoration:none;" href="/trace?q=<?php echo urlencode($b['amount']); ?>">
                         <?php echo htmlspecialchars(number_format($b['amount'], 1), ENT_QUOTES); ?> LTC
                         <span style="opacity:0.7;">(<?php echo number_format($b['anonymity_set']); ?>)</span>
                     </a>
