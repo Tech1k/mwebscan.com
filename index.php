@@ -108,12 +108,12 @@ try {
         <meta name="theme-color" content="#5271ff">
         <link rel="canonical" href="https://mwebscan.com/"/>
         <meta name="robots" content="index, follow">
-        <meta name="description" content="MWEBscan: chain analysis & privacy intelligence for Litecoin's MimbleWimble Extension Block. Track peg-ins and peg-outs, see what leaks, and maximise your privacy."/>
+        <meta name="description" content="MWEBscan: chain analysis & privacy intelligence for Litecoin's MimbleWimble Extension Block. Track peg-ins and peg-outs, see what leaks, and improve your privacy."/>
         <meta name="author" content="Tech1k">
         <title>MWEBscan - Litecoin MWEB Chain Analysis &amp; Privacy Intelligence</title>
         <link rel="shortcut icon" href="/assets/favicon.png"/>
         <meta property="og:title" content="MWEBscan - Litecoin MWEB Chain Analysis"/>
-        <meta property="og:description" content="Chain analysis & privacy intelligence for Litecoin MWEB. Track peg-ins and peg-outs, see what leaks, and maximise your privacy."/>
+        <meta property="og:description" content="Chain analysis & privacy intelligence for Litecoin MWEB. Track peg-ins and peg-outs, see what leaks, and improve your privacy."/>
         <meta property="og:type" content="website"/>
         <meta property="og:url" content="https://mwebscan.com/"/>
         <meta property="og:site_name" content="MWEBscan"/>
@@ -129,7 +129,7 @@ try {
         <?php require __DIR__ . '/lib/nav.php'; ?>
         <div id="main" style="text-align: center;">
             <h1><img src="/assets/mwebscan-logo.png" alt="MWEBscan" width="48" height="48" style="margin-right: 5px; vertical-align: middle;">MWEBscan</h1>
-            <p style="max-width:760px; margin:6px auto 14px; color:var(--muted);">Public chain analysis of Litecoin's MimbleWimble Extension Block. Peg-ins and peg-outs are visible on the main chain: this site surfaces that data so you can see what leaks and blend in to maximise your privacy. <a href="#faq">Learn more in the FAQs</a>.</p>
+            <p style="max-width:760px; margin:6px auto 14px; color:var(--muted);">Public chain analysis of Litecoin's MimbleWimble Extension Block. Peg-ins and peg-outs are visible on the main chain: this site surfaces that data so you can see what leaks, blend into larger crowds, and improve your privacy. <a href="#faq">Learn more in the FAQs</a>.</p>
             <div class="stats">
                 <div class="stat">
                     <div class="v"><?php echo is_numeric($mwebTotalValue) ? number_format((float) $mwebTotalValue, 2) : htmlspecialchars($mwebTotalValue, ENT_QUOTES); ?></div>
@@ -182,7 +182,7 @@ try {
         </div>
         <div class="search-box" style="max-width:680px;">
             <div style="background:var(--card); box-shadow:0 0 10px var(--shadow); border-radius:8px; padding:16px; text-align:left;">
-                <form method="get" action="/trace.php" class="search-row">
+                <form method="get" action="/trace" class="search-row">
                     <label for="q-trace">Trace an address or peg-in/peg-out txid</label>
                     <input id="q-trace" type="text" name="q" placeholder="ltc1q... or a transaction id">
                     <button type="submit" class="toggle-button">Trace</button>
@@ -207,11 +207,11 @@ try {
         <?php if ($recommendations && !empty($recommendations['best_pegin_amounts'])): ?>
         <div id="recommendations" style="max-width:760px; margin:24px auto; background:var(--card); box-shadow:0 0 10px var(--shadow); border-radius:8px; padding:18px;">
             <h2 class="section-title" style="margin-top:0;">Privacy Recommendations (live)</h2>
-            <p style="text-align:center; color:var(--muted);">Best peg-in amounts right now (largest crowds to hide in):</p>
+            <p style="text-align:center; color:var(--muted);">Recommended peg-in amounts right now (largest crowds to hide in):</p>
             <p style="text-align:center;">
                 <?php foreach ($recommendations['best_pegin_amounts'] as $b): ?>
                     <?php if ((float) $b['amount'] <= 0) continue; ?>
-                    <a class="badge service" style="margin:3px; display:inline-block; text-decoration:none;" href="/trace.php?q=<?php echo urlencode($b['amount']); ?>">
+                    <a class="badge service" style="margin:3px; display:inline-block; text-decoration:none;" href="/trace?q=<?php echo urlencode($b['amount']); ?>">
                         <?php echo htmlspecialchars(number_format($b['amount'], 1), ENT_QUOTES); ?> LTC
                         <span style="opacity:0.7;">(<?php echo number_format($b['anonymity_set']); ?>)</span>
                     </a>
@@ -413,11 +413,11 @@ try {
                         </td>
                         <td>
                             <?php echo htmlspecialchars(number_format($link['pegout_amount'], 8), ENT_QUOTES); ?> LTC<br/>
-                            <a href="/trace.php?q=<?php echo urlencode($link['pegout_txid']); ?>" style="font-family:monospace; font-size:0.8em;"><?php echo htmlspecialchars(substr($link['pegout_txid'], 0, 12), ENT_QUOTES); ?>...</a>
+                            <a href="/trace?q=<?php echo urlencode($link['pegout_txid']); ?>" style="font-family:monospace; font-size:0.8em;"><?php echo htmlspecialchars(substr($link['pegout_txid'], 0, 12), ENT_QUOTES); ?>...</a>
                         </td>
                         <td style="word-break:break-all;">
                             <?php if (!empty($link['pegout_address'])): ?>
-                                <a href="/trace.php?q=<?php echo urlencode($link['pegout_address']); ?>" style="font-family:monospace; font-size:0.8em;"><?php echo htmlspecialchars(substr($link['pegout_address'], 0, 18), ENT_QUOTES); ?>...</a>
+                                <a href="/trace?q=<?php echo urlencode($link['pegout_address']); ?>" style="font-family:monospace; font-size:0.8em;"><?php echo htmlspecialchars(substr($link['pegout_address'], 0, 18), ENT_QUOTES); ?>...</a>
                                 <?php if (!empty($link['pegout_entity'])): ?>
                                     <br/><strong><?php echo htmlspecialchars($link['pegout_entity'], ENT_QUOTES); ?></strong>
                                     <span style="font-size:0.8em; color:var(--muted);">(<?php echo htmlspecialchars($link['pegout_category'], ENT_QUOTES); ?>)</span>
@@ -428,7 +428,7 @@ try {
                         </td>
                         <td>
                             <?php echo htmlspecialchars(number_format($link['pegin_amount'], 8), ENT_QUOTES); ?> LTC<br/>
-                            <a href="/trace.php?q=<?php echo urlencode($link['pegin_txid']); ?>" style="font-family:monospace; font-size:0.8em;"><?php echo htmlspecialchars(substr($link['pegin_txid'], 0, 12), ENT_QUOTES); ?>...</a>
+                            <a href="/trace?q=<?php echo urlencode($link['pegin_txid']); ?>" style="font-family:monospace; font-size:0.8em;"><?php echo htmlspecialchars(substr($link['pegin_txid'], 0, 12), ENT_QUOTES); ?>...</a>
                         </td>
                         <td><?php echo htmlspecialchars(number_format($link['block_gap']), ENT_QUOTES); ?></td>
                         <td><?php echo htmlspecialchars($link['candidate_count'], ENT_QUOTES); ?></td>
@@ -521,7 +521,7 @@ try {
                 <h3>Is there a fee for pegging into or out of MWEB?</h3>
                 <p>Yes, just like any Litecoin transaction, peg-in and peg-out transactions require a standard network fee to be processed by miners. The fee is usually small, but it depends on network conditions and the size of your transaction.</p>
                 <h3>How can I support this site?</h3>
-                <p>Donations help fund development. See the <a href="/donate.php">donate page</a> for Litecoin and MWEB addresses (and OpenAlias).</p>
+                <p>Donations help fund development. See the <a href="/donate">donate page</a> for Litecoin and MWEB addresses (and OpenAlias).</p>
             </div>
         </section>
         <?php require __DIR__ . '/lib/footer.php'; ?>

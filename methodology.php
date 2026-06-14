@@ -6,11 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="theme-color" content="#5271ff">
         <meta name="description" content="How MWEBscan analyses Litecoin MWEB peg-ins and peg-outs: the heuristics, scores, and their limitations.">
-        <link rel="canonical" href="https://mwebscan.com/methodology.php"/>
+        <link rel="canonical" href="https://mwebscan.com/methodology"/>
         <meta property="og:title" content="MWEBscan Methodology"/>
         <meta property="og:description" content="How MWEBscan analyses Litecoin MWEB peg-ins and peg-outs: the heuristics, scores, and their limitations."/>
         <meta property="og:type" content="website"/>
-        <meta property="og:url" content="https://mwebscan.com/methodology.php"/>
+        <meta property="og:url" content="https://mwebscan.com/methodology"/>
         <meta property="og:site_name" content="MWEBscan"/>
         <meta property="og:image" content="https://mwebscan.com/assets/og-banner.png"/>
         <meta property="og:image:width" content="1200"/>

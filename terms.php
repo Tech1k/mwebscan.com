@@ -53,7 +53,7 @@
             <h2>10. Contact</h2>
             <p>Corrections, abuse reports and legal notices: <a href="mailto:hello@tech1k.com">hello@tech1k.com</a>.</p>
 
-            <p style="margin-top:24px;"><a href="/privacy.php">Privacy Policy</a> &middot; <a href="/disclaimer.php">Disclaimer</a></p>
+            <p style="margin-top:24px;"><a href="/privacy">Privacy Policy</a> &middot; <a href="/disclaimer">Disclaimer</a></p>
         </div>
         <?php require __DIR__ . '/lib/footer.php'; ?>
     </body>

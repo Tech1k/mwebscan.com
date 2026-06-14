@@ -26,7 +26,7 @@
 
             <p><strong>Corrections.</strong> Believe an attribution is wrong? Email <a href="mailto:hello@tech1k.com">hello@tech1k.com</a> and we will review it.</p>
 
-            <p style="margin-top:24px;"><a href="/terms.php">Terms of Service</a> &middot; <a href="/privacy.php">Privacy Policy</a></p>
+            <p style="margin-top:24px;"><a href="/terms">Terms of Service</a> &middot; <a href="/privacy">Privacy Policy</a></p>
         </div>
         <?php require __DIR__ . '/lib/footer.php'; ?>
     </body>

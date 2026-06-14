@@ -112,12 +112,12 @@ $totPegouts    = array_sum($pegouts);
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="theme-color" content="#5271ff">
         <meta name="description" content="Litecoin MWEB over time: supply, net flow and peg-in/peg-out activity, charted daily with interactive tooltips.">
-        <link rel="canonical" href="https://mwebscan.com/charts.php"/>
+        <link rel="canonical" href="https://mwebscan.com/charts"/>
         <title>Charts &middot; MWEBscan</title>
         <meta property="og:title" content="MWEBscan Charts - Litecoin MWEB over time"/>
         <meta property="og:description" content="MWEB supply, net flow and peg activity charted over time."/>
         <meta property="og:type" content="website"/>
-        <meta property="og:url" content="https://mwebscan.com/charts.php"/>
+        <meta property="og:url" content="https://mwebscan.com/charts"/>
         <meta property="og:site_name" content="MWEBscan"/>
         <meta property="og:image" content="https://mwebscan.com/assets/og-banner.png"/>
         <meta property="og:image:width" content="1200"/>

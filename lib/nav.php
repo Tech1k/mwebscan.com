@@ -2,18 +2,20 @@
 // Shared top navigation, included by every page after <body>.
 $_nav = [
     '/' => 'Home',
-    '/trace.php' => 'Trace',
-    '/charts.php' => 'Charts',
-    '/about.php' => 'About',
-    '/methodology.php' => 'Methodology',
-    '/api-docs.php' => 'API',
-    '/donate.php' => 'Donate',
+    '/trace' => 'Trace',
+    '/charts' => 'Charts',
+    '/about' => 'About',
+    '/methodology' => 'Methodology',
+    '/api-docs' => 'API',
+    '/donate' => 'Donate',
 ];
-$_cur = $_SERVER['PHP_SELF'] ?? '';
+// Served script keeps its .php (e.g. /trace.php) even on a clean /trace URL, so
+// strip it to compare against the extensionless nav hrefs.
+$_cur = preg_replace('#\.php$#', '', $_SERVER['PHP_SELF'] ?? '');
 $_items = [];
 foreach ($_nav as $_href => $_label) {
     if ($_href === '/') {
-        $_active = ($_cur === '/' || substr($_cur, -10) === '/index.php');
+        $_active = ($_cur === '/' || substr($_cur, -6) === '/index');
     } else {
         $_active = (substr($_cur, -strlen($_href)) === $_href);
     }

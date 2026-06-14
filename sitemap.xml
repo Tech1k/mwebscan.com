@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url><loc>https://mwebscan.com/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
-    <url><loc>https://mwebscan.com/charts.php</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
-    <url><loc>https://mwebscan.com/about.php</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-    <url><loc>https://mwebscan.com/api-docs.php</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-    <url><loc>https://mwebscan.com/methodology.php</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-    <url><loc>https://mwebscan.com/donate.php</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+    <url><loc>https://mwebscan.com/charts</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+    <url><loc>https://mwebscan.com/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+    <url><loc>https://mwebscan.com/api-docs</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+    <url><loc>https://mwebscan.com/methodology</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+    <url><loc>https://mwebscan.com/donate</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>

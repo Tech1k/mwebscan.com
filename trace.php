@@ -63,7 +63,7 @@ function entity_badge($attr)
         <meta property="og:title" content="MWEBscan - Trace Litecoin MWEB activity"/>
         <meta property="og:description" content="Follow peg-ins, peg-outs and the public money trail around Litecoin MWEB."/>
         <meta property="og:type" content="website"/>
-        <meta property="og:url" content="https://mwebscan.com/trace.php"/>
+        <meta property="og:url" content="https://mwebscan.com/trace"/>
         <meta property="og:site_name" content="MWEBscan"/>
         <meta property="og:image" content="https://mwebscan.com/assets/og-banner.png"/>
         <meta property="og:image:width" content="1200"/>
@@ -82,7 +82,7 @@ function entity_badge($attr)
         </div>
 
         <div class="search-box">
-            <form method="get" action="/trace.php">
+            <form method="get" action="/trace">
                 <input type="text" name="q" aria-label="Litecoin address or transaction id to trace" placeholder="address / peg-in txid / peg-out txid" value="<?php echo htmlspecialchars($q, ENT_QUOTES); ?>" autofocus>
                 <button type="submit" class="toggle-button">Trace</button>
             </form>

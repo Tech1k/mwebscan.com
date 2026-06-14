@@ -6,12 +6,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="theme-color" content="#5271ff">
         <meta name="description" content="Why MWEBscan exists: Litecoin MWEB peg-ins and peg-outs are public, so they can be correlated. We publish that analysis openly so users can see what leaks and protect their privacy.">
-        <link rel="canonical" href="https://mwebscan.com/about.php"/>
+        <link rel="canonical" href="https://mwebscan.com/about"/>
         <title>About &middot; MWEBscan</title>
         <meta property="og:title" content="Why MWEBscan? - Litecoin MWEB privacy intelligence"/>
         <meta property="og:description" content="MWEB hides what happens inside it, but peg-ins and peg-outs are public. MWEBscan shows what leaks so you can stay private."/>
         <meta property="og:type" content="website"/>
-        <meta property="og:url" content="https://mwebscan.com/about.php"/>
+        <meta property="og:url" content="https://mwebscan.com/about"/>
         <meta property="og:site_name" content="MWEBscan"/>
         <meta property="og:image" content="https://mwebscan.com/assets/og-banner.png"/>
         <meta property="og:image:width" content="1200"/>
@@ -46,20 +46,20 @@
             <h2>Who it's for</h2>
             <ul>
                 <li><strong>Privacy-conscious users</strong>: pick amounts and timing that keep your anonymity set large before you peg in or out.</li>
-                <li><strong>Wallets &amp; developers</strong>: integrate a client-side "is this peg safe?" check so users get nudged toward privacy (see the <a href="/api-docs.php">API</a>).</li>
+                <li><strong>Wallets &amp; developers</strong>: integrate a client-side "is this peg safe?" check so users get nudged toward privacy (see the <a href="/api-docs">API</a>).</li>
                 <li><strong>Researchers &amp; journalists</strong>: an open, transparent view of how MWEB actually gets used.</li>
                 <li><strong>The simply curious</strong>: watch MWEB supply, flows and activity over time.</li>
             </ul>
 
             <h2>What it does (and doesn't) do</h2>
-            <p>MWEBscan analyses <strong>only public Litecoin blockchain data</strong>. It cannot see anything inside MWEB; nobody can. Every link, attribution and score is a <strong>heuristic inference, never proof</strong>: a confidence estimate from public-side signals. Treat results as leads, not facts. See the <a href="/methodology.php">methodology</a> for exactly how each signal works and its limits.</p>
+            <p>MWEBscan analyses <strong>only public Litecoin blockchain data</strong>. It cannot see anything inside MWEB; nobody can. Every link, attribution and score is a <strong>heuristic inference, never proof</strong>: a confidence estimate from public-side signals. Treat results as leads, not facts. See the <a href="/methodology">methodology</a> for exactly how each signal works and its limits.</p>
 
             <h2>Open by design</h2>
             <p>The code is open-source (AGPL-3.0). The point isn't to sell surveillance; it's to make the leak surface visible so the community can shrink it. The more people who use common amounts, mix inside MWEB, wait before pegging out, and avoid address reuse, the weaker every one of these heuristics becomes.</p>
 
             <p style="text-align:center; margin-top:28px;">
                 <a class="toggle-button" href="/#privacyTool">Check an amount's privacy</a>
-                <a class="toggle-button" href="/trace.php">Trace an address or txid</a>
+                <a class="toggle-button" href="/trace">Trace an address or txid</a>
             </p>
         </div>
         <?php require __DIR__ . '/lib/footer.php'; ?>

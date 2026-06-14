@@ -36,7 +36,7 @@
             <h2>Changes</h2>
             <p>We may update this policy; the "last updated" date will change accordingly.</p>
 
-            <p style="margin-top:24px;"><a href="/terms.php">Terms of Service</a> &middot; <a href="/disclaimer.php">Disclaimer</a></p>
+            <p style="margin-top:24px;"><a href="/terms">Terms of Service</a> &middot; <a href="/disclaimer">Disclaimer</a></p>
         </div>
         <?php require __DIR__ . '/lib/footer.php'; ?>
     </body>

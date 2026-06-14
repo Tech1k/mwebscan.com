@@ -14,12 +14,12 @@ $OPENALIAS       = 'donate@mwebscan.com';
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="theme-color" content="#5271ff">
         <meta name="description" content="Support MWEBscan development with Litecoin - a transparent address you can audit on-chain, or a private MWEB address even we cannot see.">
-        <link rel="canonical" href="https://mwebscan.com/donate.php"/>
+        <link rel="canonical" href="https://mwebscan.com/donate"/>
         <title>Donate &middot; MWEBscan</title>
         <meta property="og:title" content="Support MWEBscan"/>
         <meta property="og:description" content="Donate in Litecoin - transparent or private via MWEB. OpenAlias: donate@mwebscan.com"/>
         <meta property="og:type" content="website"/>
-        <meta property="og:url" content="https://mwebscan.com/donate.php"/>
+        <meta property="og:url" content="https://mwebscan.com/donate"/>
         <meta property="og:site_name" content="MWEBscan"/>
         <meta property="og:image" content="https://mwebscan.com/assets/og-banner.png"/>
         <meta property="og:image:width" content="1200"/>

@@ -6,12 +6,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="theme-color" content="#5271ff">
         <meta name="description" content="MWEBscan JSON API reference: free, read-only endpoints for Litecoin MWEB peg-in/peg-out data, privacy scores, traces and links.">
-        <link rel="canonical" href="https://mwebscan.com/api-docs.php"/>
+        <link rel="canonical" href="https://mwebscan.com/api-docs"/>
         <title>API &middot; MWEBscan</title>
         <meta property="og:title" content="MWEBscan API - free Litecoin MWEB data"/>
         <meta property="og:description" content="Free, read-only JSON API for Litecoin MWEB peg-in/peg-out data, privacy scores, traces and links."/>
         <meta property="og:type" content="website"/>
-        <meta property="og:url" content="https://mwebscan.com/api-docs.php"/>
+        <meta property="og:url" content="https://mwebscan.com/api-docs"/>
         <meta property="og:site_name" content="MWEBscan"/>
         <meta property="og:image" content="https://mwebscan.com/assets/og-banner.png"/>
         <meta property="og:image:width" content="1200"/>
@@ -44,16 +44,16 @@
                 <li><strong>Base URL:</strong> <code>https://mwebscan.com/api</code> (<code>/api.php</code> also works if a deployment lacks URL rewriting)</li>
                 <li><strong>Routing:</strong> path <code>/api/&lt;endpoint&gt;</code> (e.g. <code>/api/stats</code>), or query <code>?endpoint=&lt;name&gt;</code>.</li>
                 <li><strong>Format:</strong> JSON by default; add <code>&amp;format=csv</code> to <code>trace</code>, <code>links</code>, <code>pegin_amounts</code> to download a CSV.</li>
-                <li><strong>Rate limit:</strong> ~60 requests/minute per IP (HTTP <code>429</code> if exceeded). Use is subject to the <a href="/terms.php">Terms</a>.</li>
+                <li><strong>Rate limit:</strong> ~60 requests/minute per IP (HTTP <code>429</code> if exceeded). Use is subject to the <a href="/terms">Terms</a>.</li>
                 <li><strong>CORS:</strong> open (<code>Access-Control-Allow-Origin: *</code>), so it works from the browser.</li>
                 <li><strong>License:</strong> API output is MWEBscan-generated data under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (attribution required; third-party labels keep their own terms). See <a href="https://github.com/Tech1k/mwebscan/blob/HEAD/LICENSING.md" target="_blank" rel="noopener">LICENSING.md</a>.</li>
                 <li><strong>Attribution:</strong> public products displaying MWEBscan data, links, scores, labels, heuristics, or API-derived results must include attribution such as <em>"Data from MWEBscan by Tech1k"</em> or <em>"Powered by MWEBscan"</em>, with a link to <code>mwebscan.com</code>. Do not imply endorsement unless written permission is granted. Full terms: <a href="https://github.com/Tech1k/mwebscan/blob/HEAD/ATTRIBUTION.md" target="_blank" rel="noopener">ATTRIBUTION.md</a>.</li>
             </ul>
-            <p style="background:var(--surface); border-left:3px solid var(--warn); padding:8px 12px;">All links and attributions are <strong>heuristic, not proof</strong> (public-chain inference only). See the <a href="/methodology.php">methodology</a>.</p>
+            <p style="background:var(--surface); border-left:3px solid var(--warn); padding:8px 12px;">All links and attributions are <strong>heuristic, not proof</strong> (public-chain inference only). See the <a href="/methodology">methodology</a>.</p>
             <p><strong>Need a higher limit?</strong> You have two paths: self-host (the whole stack is open-source under the AGPL, so your own instance is not subject to the public API rate limit), or email <a href="mailto:hello@tech1k.com">hello@tech1k.com</a> with your use case and rough volume. Options include a raised per-key limit, bulk data exports, hosted/dedicated instances, or commercial (non-AGPL) terms.</p>
 
             <h2>Endpoints</h2>
-            <p style="color:var(--muted); font-size:0.9em;">Examples below are abbreviated; every response also includes <code>"version"</code>. Field meanings (<code>confidence</code>, <code>block_gap</code>, <code>candidate_count</code>, privacy/risk scores) are defined in the <a href="/methodology.php">methodology</a>.</p>
+            <p style="color:var(--muted); font-size:0.9em;">Examples below are abbreviated; every response also includes <code>"version"</code>. Field meanings (<code>confidence</code>, <code>block_gap</code>, <code>candidate_count</code>, privacy/risk scores) are defined in the <a href="/methodology">methodology</a>.</p>
 
             <div class="ep">
                 <h3><span class="get">GET</span> /api/health</h3>

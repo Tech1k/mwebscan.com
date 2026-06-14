@@ -4,19 +4,19 @@
 <footer style="margin-top:40px; border-top:1px solid var(--border); padding-top:16px;">
     <p style="text-align:center; font-size:0.9em; color:var(--muted);">Heuristic analysis of public Litecoin data: inferences, not proof. Not financial or legal advice.</p>
     <p style="text-align:center; font-size:0.9em;">
-        <a href="/about.php">About</a> &middot;
-        <a href="/trace.php">Trace</a> &middot;
-        <a href="/charts.php">Charts</a> &middot;
-        <a href="/methodology.php">Methodology</a> &middot;
-        <a href="/api-docs.php">API</a> &middot;
-        <a href="/methodology.php#labels">Submit labels</a> &middot;
-        <a href="/donate.php">Donate</a> &middot;
+        <a href="/about">About</a> &middot;
+        <a href="/trace">Trace</a> &middot;
+        <a href="/charts">Charts</a> &middot;
+        <a href="/methodology">Methodology</a> &middot;
+        <a href="/api-docs">API</a> &middot;
+        <a href="/methodology#labels">Submit labels</a> &middot;
+        <a href="/donate">Donate</a> &middot;
         <a href="https://github.com/Tech1k/mwebscan" target="_blank" rel="noopener">Open-source</a>
     </p>
     <p style="text-align:center; font-size:0.9em;">
-        <a href="/terms.php">Terms</a> &middot;
-        <a href="/privacy.php">Privacy</a> &middot;
-        <a href="/disclaimer.php">Disclaimer</a>
+        <a href="/terms">Terms</a> &middot;
+        <a href="/privacy">Privacy</a> &middot;
+        <a href="/disclaimer">Disclaimer</a>
     </p>
     <p style="text-align:center; font-size:0.85em; color:var(--muted);">Made by <a href="https://tech1k.com" target="_blank" rel="noopener">Tech1k</a>.</p>
 </footer>

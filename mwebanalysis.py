@@ -628,7 +628,7 @@ def compute_recommendations(cur):
         'recommended_internal_mixes': 2,
         'notes': [
             'Use a common, rounded amount from the list to blend into the largest anonymity set.',
-            'Move funds within MWEB at least a couple of times before pegging out, so the exit amount differs from your entry.',
+            'Move or split funds inside MWEB before pegging out, so your exit amount does not closely match your entry.',
             'Never peg out to an address reused from your peg-in or otherwise linked to your public identity.',
             f'Wait at least ~{recommended_wait} blocks (~{round(recommended_wait * 2.5 / 60, 1)}h) before pegging out to avoid the quick round-trip pattern.',
         ],
