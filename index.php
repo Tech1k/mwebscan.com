@@ -217,6 +217,18 @@ try {
                     </a>
                 <?php endforeach; ?>
             </p>
+            <?php if (!empty($recommendations['best_pegout_amounts'])): ?>
+            <p style="text-align:center; color:var(--muted);">Recommended peg-out amounts right now (largest crowds to hide in):</p>
+            <p style="text-align:center;">
+                <?php foreach ($recommendations['best_pegout_amounts'] as $b): ?>
+                    <?php if ((float) $b['amount'] <= 0) continue; ?>
+                    <a class="badge service" style="margin:3px; display:inline-block; text-decoration:none;" href="/trace?q=<?php echo urlencode($b['amount']); ?>">
+                        <?php echo htmlspecialchars(number_format($b['amount'], 1), ENT_QUOTES); ?> LTC
+                        <span style="opacity:0.7;">(<?php echo number_format($b['anonymity_set']); ?>)</span>
+                    </a>
+                <?php endforeach; ?>
+            </p>
+            <?php endif; ?>
             <ul style="color:var(--text-soft); max-width:640px; margin:10px auto;">
                 <?php foreach (($recommendations['notes'] ?? []) as $note): ?>
                     <li style="margin:4px 0;"><?php echo htmlspecialchars($note, ENT_QUOTES); ?></li>

@@ -611,6 +611,15 @@ def compute_recommendations(cur):
     ''').fetchall()
     best_amounts = [{'amount': a, 'anonymity_set': c} for a, c in best]
 
+    # Common peg-out amounts: blend your exit into a crowd too, so it is harder
+    # to match an exit back to a specific peg-in.
+    best_out = cur.execute('''
+        SELECT ROUND(amount, 1) AS a, COUNT(*) AS c
+        FROM mweb_pegouts WHERE amount > 0
+        GROUP BY a HAVING a > 0 ORDER BY c DESC LIMIT 12
+    ''').fetchall()
+    best_pegout_amounts = [{'amount': a, 'anonymity_set': c} for a, c in best_out]
+
     gaps = [r[0] for r in cur.execute(
         f"SELECT block_gap FROM mweb_links WHERE confidence >= {HIGH_CONF_THRESHOLD} "
         f"AND block_gap IS NOT NULL ORDER BY block_gap"
@@ -623,6 +632,7 @@ def compute_recommendations(cur):
 
     recommendations = {
         'best_pegin_amounts': best_amounts,
+        'best_pegout_amounts': best_pegout_amounts,
         'recommended_wait_blocks': recommended_wait,
         'recommended_wait_hours': round(recommended_wait * 2.5 / 60, 1),  # ~2.5 min/block
         'recommended_internal_mixes': 2,
