@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+# Dynamic, effectively-infinite query space -- don't crawl these.
+Disallow: /api.php
+Disallow: /trace.php
+
+Sitemap: https://mwebscan.com/sitemap.xml

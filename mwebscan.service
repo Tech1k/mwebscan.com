@@ -1,0 +1,30 @@
+[Unit]
+Description=MWEBscan Peg-in Sync Daemon
+After=network.target
+# Crash-loop guard: stop after 5 failures within 60s.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /path/to/mwebscan.py
+WorkingDirectory=/path/to/dir/
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictSUIDSGID=true
+# ProtectSystem=strict
+# ProtectHome=read-only
+# ReadWritePaths=/path/to/dir
+
+User=your-user
+
+[Install]
+WantedBy=multi-user.target

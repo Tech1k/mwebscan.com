@@ -1,0 +1,11 @@
+# MWEBscan Python dependencies.
+#
+# The node-less daemon (mwebp2p.py, tools/p2p_fetch.py) and the analysis pass
+# (mwebanalysis.py) use only the standard library. The full-node scanner, the
+# webhook monitor, and the label downloaders need requests.
+
+requests
+
+# Optional, feature-specific (install only if you use them):
+#   orjson   faster getblock JSON decoding in mwebscan.py (auto-detected if present)
+#   pyyaml   tools/label_graphsense.py, for importing GraphSense TagPacks

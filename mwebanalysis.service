@@ -1,0 +1,22 @@
+[Unit]
+Description=MWEBscan chain-analysis pass (round-trip links, anonymity scoring)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /path/to/mwebanalysis.py
+ExecStartPost=/usr/bin/python3 /path/to/mwebmonitor.py check
+WorkingDirectory=/path/to/dir/
+StandardOutput=journal
+StandardError=journal
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# ProtectSystem=strict
+# ProtectHome=read-only
+# ReadWritePaths=/path/to/dir
+
+User=your-user

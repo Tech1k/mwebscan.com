@@ -1,0 +1,29 @@
+{
+  "_comment": "Known-address labels for entity attribution. Populate `labels` with curated, sourced addresses (e.g. exchange deposit/withdrawal addresses). Addresses beginning with 'EXAMPLE' are ignored by the loader. Do NOT add unverified attributions: a wrong label is worse than no label.",
+  "_categories": [
+    "exchange",
+    "service",
+    "pool",
+    "mixer",
+    "gambling",
+    "merchant",
+    "sanctioned",
+    "other"
+  ],
+  "_schema": {
+    "address": "LTC address string (public-chain)",
+    "entity": "human name, e.g. 'Binance'",
+    "category": "one of _categories",
+    "confidence": "0.0-1.0 (1.0 = directly confirmed, lower = heuristic)",
+    "source": "where this attribution came from (url / dataset / 'manual')"
+  },
+  "labels": [
+    {
+      "address": "EXAMPLE_replace_with_real_exchange_address",
+      "entity": "Example Exchange",
+      "category": "exchange",
+      "confidence": 1.0,
+      "source": "manual"
+    }
+  ]
+}

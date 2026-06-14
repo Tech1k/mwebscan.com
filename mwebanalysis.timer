@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the MWEBscan chain-analysis pass periodically
+
+[Timer]
+# Run 5 minutes after boot, then every 15 minutes thereafter.
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

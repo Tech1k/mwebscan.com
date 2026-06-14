@@ -1,0 +1,61 @@
+# MWEBscan Apache config.
+
+# Block VCS / cache directories by path (FilesMatch only sees basenames).
+RedirectMatch 404 (?i)(^|/)\.(git|svn|hg|bzr)(/|$)
+RedirectMatch 404 (?i)/(__pycache__|\.pytest_cache)(/|$)
+RedirectMatch 404 (?i)\.(pyc|pyo)$
+
+# Block data, source and config files.
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(db|db-wal|db-shm|db-journal|sqlite|py|csv|json|service|timer|md|lock|bak|orig|save|swp|inc)$|~$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(db|db-wal|db-shm|db-journal|sqlite|py|csv|json|service|timer|md|lock|bak|orig|save|swp|inc)$|~$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# Block source/config files not caught by extension above. (robots.txt and
+# sitemap.xml stay public for crawlers; assets/fonts/OFL.txt ships with the font.)
+<IfModule mod_authz_core.c>
+    <FilesMatch "^requirements\.txt$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^requirements\.txt$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# Block dotfiles.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Security headers.
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Clean API URLs: /api/<endpoint> (e.g. /api/stats) and /api?endpoint=...
+# /api.php?endpoint=... still works as a fallback.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^api/([a-z_]+)/?$ api.php?endpoint=$1 [QSA,L]
+    RewriteRule ^api/?$ api.php [QSA,L]
+</IfModule>
+
+Options -Indexes

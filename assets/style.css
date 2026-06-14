@@ -1,0 +1,339 @@
+@font-face {
+  font-family: 'Inter';
+  src: url('/assets/fonts/inter.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Theme palette. Default follows the OS; data-theme on <html> forces a choice. */
+:root {
+	--bg: #f7f7f7;
+	--card: #ffffff;
+	--text: #1b1d23;
+	--text-soft: #44474e;
+	--muted: #6b6b6b;
+	--faint: #8a8f98;
+	--border: #e5e5e5;
+	--border2: #cccccc;
+	--surface: #f4f5f7;
+	--table-head: #eeeeee;
+	--table-alt: #f8f8f8;
+	--grid: #eef0f4;
+	--accent: #5271ff;
+	--info-bg: #eef1ff;
+	--info-border: #d7ddff;
+	--warn: #b5532a;
+	--risk: #b52a2a;
+	--ok: #2a8a4a;
+	--shadow: rgba(0, 0, 0, 0.10);
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #14161b;
+		--card: #1c1f27;
+		--text: #e6e8ec;
+		--text-soft: #c4c8d0;
+		--muted: #9aa0ab;
+		--faint: #7c828c;
+		--border: #2a2e37;
+		--border2: #3a3f4a;
+		--surface: #232730;
+		--table-head: #232730;
+		--table-alt: #1f232b;
+		--grid: #2a2e37;
+		--accent: #6b86ff;
+		--info-bg: #1b2236;
+		--info-border: #2e3a5c;
+		--warn: #e0894f;
+		--risk: #ef6b6b;
+		--ok: #4fbf75;
+		--shadow: rgba(0, 0, 0, 0.5);
+		color-scheme: dark;
+	}
+}
+
+:root[data-theme="dark"] {
+	--bg: #14161b;
+	--card: #1c1f27;
+	--text: #e6e8ec;
+	--text-soft: #c4c8d0;
+	--muted: #9aa0ab;
+	--faint: #7c828c;
+	--border: #2a2e37;
+	--border2: #3a3f4a;
+	--surface: #232730;
+	--table-head: #232730;
+	--table-alt: #1f232b;
+	--grid: #2a2e37;
+	--accent: #6b86ff;
+	--info-bg: #1b2236;
+	--info-border: #2e3a5c;
+	--warn: #e0894f;
+	--risk: #ef6b6b;
+	--ok: #4fbf75;
+	--shadow: rgba(0, 0, 0, 0.5);
+	color-scheme: dark;
+}
+
+table {
+    border-collapse: collapse;
+    width: 50%; margin: 20px auto;
+    background: var(--card);
+    box-shadow: 0 0 10px var(--shadow);
+}
+th, td {
+    border: 1px solid var(--border2);
+    padding: 8px 12px;
+    text-align: center;
+}
+th {
+    background: var(--table-head);
+}
+
+tr:nth-child(even) {
+    background-color: var(--table-alt);
+}
+
+/* Rows hidden by the "Show all" truncation or the amount filter. */
+.trunc-hidden, .filter-hidden { display: none; }
+
+.section-title {
+    text-align: center; color: var(--muted); margin-top: 40px;
+}
+
+input[type="number"], input[type="text"] {
+    width: 100px; padding: 5px; margin: 5px;
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--border2); border-radius: 4px;
+}
+
+.filters {
+    text-align: center; margin: 20px;
+}
+
+.toggle-button {
+    display: inline-block;
+    background-color: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 8px 12px;
+    margin: 4px 3px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.toggle-button:hover {
+    background-color: var(--table-head);
+}
+
+body {
+	font-family: 'Inter', sans-serif !important;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    overflow-x: hidden;   /* no accidental horizontal scroll / left-shift on mobile */
+}
+
+/* Inline code/long tokens wrap instead of forcing the page wider. */
+code { overflow-wrap: anywhere; }
+
+a { color: var(--accent); }
+
+#main, .maincol {
+	margin: auto;
+	width: 70%;
+}
+
+/* Multi-column tables (links, entity flows, reuse, addresses) match the main
+   content column (#main) width so they line up with the rest of the page
+   instead of blowing out wider. The verbose "Why" column wraps to fit. */
+#linksTable, #reuseTable, #entityFlowTable, #pegoutAddressTable {
+	width: 70%;
+}
+
+@media (max-width: 992px) {
+	#main, .maincol {
+		width: 95%;
+	}
+	#navlink {
+		margin-right: auto;
+	}
+	/* Narrow tables (2-col amount lists) just fill the width and lay out normally. */
+	table {
+		width: 100%;
+		font-size: 0.9em;
+	}
+	/* Wide multi-column tables scroll horizontally instead of squishing or
+	   collapsing to the left. display:block is what enables the scroll. */
+	#linksTable, #reuseTable, #entityFlowTable, #pegoutAddressTable {
+		display: block;
+		overflow-x: auto;
+		width: 100%;
+		max-width: 100%;
+	}
+}
+
+/* Trace flow diagrams: on phones, stack the steps in a vertical column with
+   downward connectors, instead of wrapping the horizontal row into a grid. */
+@media (max-width: 680px) {
+	.flow {
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+	}
+	.flow .node {
+		width: 100%;
+		max-width: 360px;
+	}
+	.flow .hop {
+		flex-direction: row;
+		gap: 6px;
+		min-width: 0;
+		padding: 2px 0;
+	}
+	.flow .arrow {
+		transform: rotate(90deg);
+		padding: 2px 0;
+	}
+	/* Theme toggle on its own centered line instead of trailing the wrapped nav. */
+	.theme-toggle {
+		display: block;
+		width: fit-content;
+		margin: 8px auto 0;
+	}
+}
+
+.topnav {
+	text-align: center;
+	padding: 12px 10px;
+	font-size: 0.95em;
+	border-bottom: 1px solid var(--border);
+	margin-bottom: 10px;
+}
+.topnav a { margin: 0 4px; text-decoration: none; }
+
+.theme-toggle {
+	margin-left: 8px;
+	padding: 4px 8px;
+	font-size: 0.85em;
+	line-height: 1;
+	border: 1px solid var(--border2);
+	border-radius: 14px;
+	background: var(--surface);
+	color: var(--muted);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	vertical-align: middle;
+}
+.theme-toggle:hover { color: var(--text); }
+
+a:focus-visible,
+button:focus-visible,
+.toggle-button:focus-visible,
+.copy-btn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Headline stat cards */
+.stats {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 12px;
+	margin: 16px auto;
+}
+.stat {
+	background: var(--card);
+	box-shadow: 0 0 10px var(--shadow);
+	border-radius: 8px;
+	padding: 12px 18px;
+	min-width: 150px;
+	text-align: center;
+}
+.stat .v { font-size: 1.4em; font-weight: 600; line-height: 1.1; }
+.stat .l { font-size: 0.78em; color: var(--muted); margin-top: 4px; }
+.stat.warn .v { color: var(--warn); }
+.stat.risk .v { color: var(--risk); }
+.search-row { margin: 0; }
+.search-row + .search-row { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+.search-row label { display: block; font-size: 0.85em; color: var(--text-soft); margin-bottom: 4px; }
+
+/* --- Trace / explorer ------------------------------------------------- */
+.search-box {
+	text-align: center;
+	margin: 24px auto;
+	max-width: 720px;
+}
+.search-box input[type="text"] {
+	width: 60%;
+	max-width: 480px;
+	padding: 10px;
+	font-size: 16px;   /* >=16px so iOS Safari does not zoom in on focus */
+}
+.flow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
+	justify-content: center;
+	gap: 10px;
+	margin: 20px auto;
+	max-width: 1100px;
+}
+.node {
+	background: var(--card);
+	box-shadow: 0 0 10px var(--shadow);
+	border-radius: 8px;
+	padding: 12px 14px;
+	min-width: 180px;
+	max-width: 260px;
+	font-size: 0.9em;
+	text-align: left;
+}
+.node h3 {
+	margin: 0 0 6px;
+	font-size: 0.95em;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.node .amt { font-size: 1.1em; font-weight: 600; }
+.node a.tx { font-family: monospace; font-size: 0.8em; word-break: break-all; }
+.node .addr { font-family: monospace; font-size: 0.8em; word-break: break-all; color: var(--text-soft); }
+.arrow {
+	display: flex;
+	align-items: center;
+	font-size: 1.4em;
+	color: var(--faint);
+	padding: 0 4px;
+}
+.hop {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 0 6px;
+	min-width: 90px;
+	color: var(--muted);
+	font-size: 0.8em;
+	text-align: center;
+}
+.badge {
+	display: inline-block;
+	padding: 1px 7px;
+	border-radius: 10px;
+	font-size: 0.78em;
+	font-weight: 600;
+	background: #eee;
+	color: #444;
+}
+.badge.exchange { background: #ffe2d6; color: #b5532a; }
+.badge.mixer, .badge.sanctioned { background: #ffd6d6; color: #b52a2a; }
+.badge.service, .badge.pool { background: #dce8ff; color: #2a4fb5; }
+.conf-high { color: var(--risk); font-weight: 700; }
+.conf-med { color: var(--warn); font-weight: 600; }
+.conf-low { color: var(--muted); }

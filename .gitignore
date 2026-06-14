@@ -1,0 +1,16 @@
+mwebscan.db
+mwebscan.db-wal
+mwebscan.db-shm
+mwebscan.db-journal
+__pycache__/
+
+# Real / sourced label data is the moat and may carry third-party licence terms
+# (OFAC, GraphSense, etc.) - keep it out of version control. labels.json stays
+# tracked only as the placeholder/schema; curate real labels into these:
+labels*.csv
+labels.local.json
+
+# Runtime secrets / caches (never commit)
+.env
+.rate_salt
+.pytest_cache/

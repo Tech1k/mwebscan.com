@@ -1,0 +1,6 @@
+address,entity,category,confidence,source
+EXAMPLE_replace_with_a_real_binance_LTC_hot_wallet,Binance,exchange,1.0,binance-proof-of-reserves
+EXAMPLE_replace_with_a_real_coinbase_LTC_address,Coinbase,exchange,1.0,exchange-disclosure
+EXAMPLE_replace_with_a_real_kraken_LTC_address,Kraken,exchange,1.0,exchange-disclosure
+EXAMPLE_replace_with_a_real_okx_LTC_address,OKX,exchange,1.0,okx-proof-of-reserves
+EXAMPLE_replace_with_a_real_kucoin_LTC_address,KuCoin,exchange,1.0,exchange-disclosure

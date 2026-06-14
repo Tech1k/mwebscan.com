@@ -1,0 +1,39 @@
+[Unit]
+# Node-less MWEB scanner: fetches blocks from the Litecoin P2P network
+# (no litecoind / no chainstate) and writes the same mwebscan.db as mwebscan.py.
+# Alternative to mwebscan.service; run one, not both, since both advance the
+# same scan cursor.
+Description=MWEBscan Node-less P2P Sync Daemon
+After=network-online.target
+Wants=network-online.target
+# Crash-loop guard: stop after 5 failures within 60s.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /path/to/mwebp2p.py
+WorkingDirectory=/path/to/dir/
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictSUIDSGID=true
+# ProtectSystem=strict
+# ProtectHome=read-only
+# ReadWritePaths=/path/to/dir
+
+# Optional: resolve peg-in source addresses via public Electrum servers.
+# Environment=MWEBSCAN_P2P_SOURCES=1
+# Environment=MWEBSCAN_P2P_POLL=60
+
+User=your-user
+
+[Install]
+WantedBy=multi-user.target
