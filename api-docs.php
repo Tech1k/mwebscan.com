@@ -39,6 +39,10 @@
         <div id="main">
             <h1 style="text-align:center;"><img src="/assets/mwebscan-logo.png" alt="MWEBscan" width="40" height="40" style="margin-right:5px; vertical-align:middle;">MWEBscan API</h1>
 
+            <?php if (substr($_SERVER['HTTP_HOST'] ?? '', -6) === '.onion'): ?>
+            <p style="background:var(--surface); border-left:3px solid var(--warn); padding:8px 12px;">Note: the live API is disabled over Tor (per-IP rate limiting can't work on an onion service). The endpoints and the "Try it" buttons below work on the clearnet site at <code>mwebscan.com</code>.</p>
+            <?php endif; ?>
+
             <p>A free, <strong>read-only</strong> JSON API over the same engine the site uses. No key or sign-up for normal use.</p>
             <ul>
                 <li><strong>Base URL:</strong> <code>https://mwebscan.com/api</code> (<code>/api.php</code> also works if a deployment lacks URL rewriting)</li>

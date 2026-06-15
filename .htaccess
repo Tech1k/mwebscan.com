@@ -50,6 +50,10 @@ RedirectMatch 404 (?i)\.(pyc|pyo)$
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
+# Custom error pages.
+ErrorDocument 404 /404.php
+ErrorDocument 403 /403.php
+
 # Clean, extensionless URLs.
 <IfModule mod_rewrite.c>
     RewriteEngine On

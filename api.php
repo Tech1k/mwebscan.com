@@ -127,6 +127,13 @@ try {
     err('database unavailable', 503);
 }
 
+// Disabled over the Tor onion service: every request there arrives from the
+// loopback IP, so per-IP rate limiting collapses into one shared bucket.
+// Browsing the site over Tor still works; programmatic use goes through clearnet.
+if (substr($_SERVER['HTTP_HOST'] ?? '', -6) === '.onion') {
+    err('The API is disabled over Tor. Use the clearnet endpoint at https://mwebscan.com/api (rate-limited per IP), or self-host.', 403);
+}
+
 if ($REQUIRED_KEY !== '') {
     $key = $_GET['key'] ?? ($_SERVER['HTTP_X_API_KEY'] ?? '');
     if (!hash_equals($REQUIRED_KEY, (string) $key)) {

@@ -19,6 +19,7 @@
         <a href="/disclaimer">Disclaimer</a>
     </p>
     <p style="text-align:center; font-size:0.85em; color:var(--muted);">Made by <a href="https://tech1k.com" target="_blank" rel="noopener">Tech1k</a>.</p>
+    <p style="text-align:center; font-size:0.78em; color:var(--muted); word-break:break-all; margin:6px auto 0; max-width:560px;">Also on Tor: <a href="http://sd7u7gehbw3mgqnvibky2sfglwav4kdc7pzm4gtgp747d3eyjhgj5zqd.onion">sd7u7gehbw3mgqnvibky2sfglwav4kdc7pzm4gtgp747d3eyjhgj5zqd.onion</a></p>
 </footer>
 <script>
 (function () {
