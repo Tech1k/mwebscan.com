@@ -91,6 +91,10 @@ $lookup = ($lookupAmount !== null && $lookupAmount > 0)
 
 $recommendations = mwebscan_cache_get($db, 'recommendations');
 
+// Occurrence cutoff for the "common amounts" tables (300 on mainnet, lower on
+// testnet where volume is small; see network.php).
+$minCommon = mwebscan_min_common_count();
+
 // Newest cache row, used for the freshness note.
 $analysisUpdated = null;
 try {
@@ -263,7 +267,7 @@ try {
             </thead>
             <tbody id="standardizedMainBody">
                 <?php foreach ($standardizedPegins as $row): ?>
-                    <?php if ($row['count'] >= 300 && $row['amount'] != 0.0): ?>
+                    <?php if ($row['count'] >= $minCommon && $row['amount'] != 0.0): ?>
                         <tr>
                             <td class="amount"><?php echo htmlspecialchars(number_format($row['amount'], 1), ENT_QUOTES); ?></td>
                             <td class="count"><?php echo htmlspecialchars($row['count'], ENT_QUOTES); ?></td>
@@ -273,7 +277,7 @@ try {
             </tbody>
         </table>
         <div class="section-title">
-            <button id="toggleRareStandardized" class="toggle-button">Show Low Occurrence (<300 count) Peg-Ins</button>
+            <button id="toggleRareStandardized" class="toggle-button">Show Low Occurrence (&lt;<?php echo $minCommon; ?> count) Peg-Ins</button>
         </div>
         <div id="rareStandardizedContainer" style="display: none;">
             <table id="rareStandardizedTable">
@@ -285,7 +289,7 @@ try {
                 </thead>
                 <tbody>
                     <?php foreach ($standardizedPegins as $row): ?>
-                        <?php if ($row['count'] < 300 && $row['amount'] != 0.0): ?>
+                        <?php if ($row['count'] < $minCommon && $row['amount'] != 0.0): ?>
                             <tr>
                                 <td class="amount"><?php echo htmlspecialchars(number_format($row['amount'], 1), ENT_QUOTES); ?></td>
                                 <td class="count"><?php echo htmlspecialchars($row['count'], ENT_QUOTES); ?></td>
@@ -327,7 +331,7 @@ try {
             </thead>
             <tbody>
                 <?php foreach ($standardizedPegouts as $row): ?>
-                    <?php if ($row['count'] >= 300 && $row['amount'] != 0.0): ?>
+                    <?php if ($row['count'] >= $minCommon && $row['amount'] != 0.0): ?>
                         <tr>
                             <td class="amount"><?php echo htmlspecialchars(number_format($row['amount'], 1), ENT_QUOTES); ?></td>
                             <td class="count"><?php echo htmlspecialchars($row['count'], ENT_QUOTES); ?></td>
@@ -338,7 +342,7 @@ try {
         </table>
 
         <div class="section-title">
-            <button id="toggleRarePegout" class="toggle-button">Show Low Occurrence (<300 count) Peg-Outs</button>
+            <button id="toggleRarePegout" class="toggle-button">Show Low Occurrence (&lt;<?php echo $minCommon; ?> count) Peg-Outs</button>
         </div>
         <div id="rarePegoutContainer" style="display: none;">
             <table id="rarePegoutTable">
@@ -350,7 +354,7 @@ try {
                 </thead>
                 <tbody>
                     <?php foreach ($standardizedPegouts as $row): ?>
-                        <?php if ($row['count'] < 300 && $row['amount'] != 0.0): ?>
+                        <?php if ($row['count'] < $minCommon && $row['amount'] != 0.0): ?>
                             <tr>
                                 <td class="amount"><?php echo htmlspecialchars(number_format($row['amount'], 1), ENT_QUOTES); ?></td>
                                 <td class="count"><?php echo htmlspecialchars($row['count'], ENT_QUOTES); ?></td>
@@ -658,8 +662,8 @@ try {
             // screen readers.
             [
                 ["toggleRandomTable", "randomTableContainer", "Unique (non-rounded) Peg-Ins"],
-                ["toggleRareStandardized", "rareStandardizedContainer", "Low Occurrence (<300 count) Peg-Ins"],
-                ["toggleRarePegout", "rarePegoutContainer", "Low Occurrence (<300 count) Peg-Outs"],
+                ["toggleRareStandardized", "rareStandardizedContainer", "Low Occurrence (<<?php echo $minCommon; ?> count) Peg-Ins"],
+                ["toggleRarePegout", "rarePegoutContainer", "Low Occurrence (<<?php echo $minCommon; ?> count) Peg-Outs"],
                 ["togglePegoutAddresses", "pegoutAddressContainer", "Most-Reused Peg-Out Addresses"],
                 ["toggleReuse", "reuseContainer", "Address-Reuse Links (Public Identity <-> MWEB Exit)"],
             ].forEach(function (cfg) {

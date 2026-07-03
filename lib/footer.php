@@ -1,5 +1,6 @@
 <?php
 // Shared site footer: disclaimer, nav, legal links and credit.
+require_once __DIR__ . '/network.php';
 ?>
 <footer style="margin-top:40px; border-top:1px solid var(--border); padding-top:16px;">
     <p style="text-align:center; font-size:0.9em; color:var(--muted);">Heuristic analysis of public Litecoin data: inferences, not proof. Not financial or legal advice.</p>
@@ -11,7 +12,8 @@
         <a href="/api-docs">API</a> &middot;
         <a href="/methodology#labels">Submit labels</a> &middot;
         <a href="/donate">Donate</a> &middot;
-        <a href="https://github.com/Tech1k/mwebscan.com" target="_blank" rel="noopener">Open-source</a>
+        <a href="https://github.com/Tech1k/mwebscan.com" target="_blank" rel="noopener">Open-source</a> &middot;
+        <a href="<?php echo mwebscan_other_network_url(); ?>"><?php echo mwebscan_other_network_label(); ?></a>
     </p>
     <p style="text-align:center; font-size:0.9em;">
         <a href="/terms">Terms</a> &middot;

@@ -66,3 +66,25 @@ function mwebscan_base_url()
     }
     return 'https://' . $host;
 }
+
+/**
+ * Minimum occurrences for a rounded amount to be shown as "common" (in the main
+ * tables) rather than under the low-occurrence toggle. Testnet has far less
+ * volume, so mainnet's cutoff of 300 would hide almost everything.
+ */
+function mwebscan_min_common_count()
+{
+    return mwebscan_is_testnet() ? 10 : 300;
+}
+
+/** Absolute URL of the other network's site, for the footer cross-link. */
+function mwebscan_other_network_url()
+{
+    return mwebscan_is_testnet() ? 'https://mwebscan.com' : 'https://testnet.mwebscan.com';
+}
+
+/** Label for the other network (what the cross-link points to). */
+function mwebscan_other_network_label()
+{
+    return mwebscan_is_testnet() ? 'Mainnet' : 'Testnet';
+}
