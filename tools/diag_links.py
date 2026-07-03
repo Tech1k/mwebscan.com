@@ -9,10 +9,15 @@ peg-outs fall out, so you can tell whether "zero confident matches" means:
 Run: python3 diag_links.py [mwebscan.db]
 """
 
+import os
 import sys
 import sqlite3
 import collections
 from bisect import bisect_left, bisect_right
+
+# network.py lives at the repo root (this file is in tools/).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from network import PARAMS as _NET
 
 # Keep these in sync with mwebanalysis.py
 AMOUNT_TOLERANCE_LTC = 0.002
@@ -27,7 +32,7 @@ def to_l(v):
 
 
 def main():
-    db = sys.argv[1] if len(sys.argv) > 1 else 'mwebscan.db'
+    db = sys.argv[1] if len(sys.argv) > 1 else _NET['DB_FILENAME']
     c = sqlite3.connect(db).cursor()
 
     n_pin = c.execute("SELECT COUNT(*) FROM mweb_pegins").fetchone()[0]

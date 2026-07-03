@@ -30,7 +30,7 @@
             <p><strong>MWEBscan analyses only public Litecoin blockchain data.</strong> Nothing inside MWEB is visible to anyone, including us. Every link between a peg-in and a peg-out is an <em>inference</em> from public-side signals: a heuristic confidence score, not a calibrated statistical probability, and never a proof. Treat confidence scores as investigative leads, not facts.</p>
 
             <h2>What we observe directly</h2>
-            <p>Peg-ins are <code>witness_mweb_pegin</code> outputs on the public chain. Peg-outs are the non-<code>witness_mweb_hogaddr</code> outputs of each block's HogEx (integrating) transaction; the <code>hogaddr</code> output's value is the total LTC held in MWEB. These amounts, addresses, blocks and times are facts. Everything below is derived from them.</p>
+            <p>Peg-ins are <code>witness_mweb_pegin</code> outputs on the public chain. Peg-outs are the non-<code>witness_mweb_hogaddr</code> outputs of each block's HogEx (integrating) transaction; the <code>hogaddr</code> output's value is the total <?php echo mwebscan_unit(); ?> held in MWEB. These amounts, addresses, blocks and times are facts. Everything below is derived from them.</p>
 
             <h2>Round-trip linking</h2>
             <p>A peg-out of amount <em>A</em> is matched against earlier peg-ins of amount <em>A</em> to <em>A + fee tolerance</em> (a peg-out equals an earlier peg-in minus small fees). Confidence rises when:</p>

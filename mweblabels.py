@@ -16,6 +16,8 @@ import json
 import csv
 import sys
 
+from network import PARAMS as _NET
+
 VALID_CATEGORIES = {
     'exchange', 'service', 'pool', 'mixer',
     'gambling', 'merchant', 'sanctioned', 'other',
@@ -44,7 +46,8 @@ def read_labels(path):
         return json.load(f).get('labels', [])
 
 
-def load(labels_path='labels.json', db_path='mwebscan.db'):
+def load(labels_path='labels.json', db_path=None):
+    db_path = db_path or _NET['DB_FILENAME']
     rows_in = read_labels(labels_path)
 
     conn = sqlite3.connect(db_path)
@@ -92,5 +95,5 @@ def load(labels_path='labels.json', db_path='mwebscan.db'):
 
 if __name__ == '__main__':
     labels_path = sys.argv[1] if len(sys.argv) > 1 else 'labels.json'
-    db_path = sys.argv[2] if len(sys.argv) > 2 else 'mwebscan.db'
+    db_path = sys.argv[2] if len(sys.argv) > 2 else _NET['DB_FILENAME']
     load(labels_path, db_path)

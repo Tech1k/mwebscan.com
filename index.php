@@ -133,19 +133,19 @@ try {
             <div class="stats">
                 <div class="stat">
                     <div class="v"><?php echo is_numeric($mwebTotalValue) ? number_format((float) $mwebTotalValue, 2) : htmlspecialchars($mwebTotalValue, ENT_QUOTES); ?></div>
-                    <div class="l">MWEB supply (LTC)</div>
+                    <div class="l">MWEB supply (<?php echo mwebscan_unit(); ?>)</div>
                 </div>
                 <div class="stat">
                     <div class="v"><?php echo number_format($peginCount); ?></div>
-                    <div class="l">Peg-ins &middot; <?php echo number_format($peginTotal, 0); ?> LTC in</div>
+                    <div class="l">Peg-ins &middot; <?php echo number_format($peginTotal, 0); ?> <?php echo mwebscan_unit(); ?> in</div>
                 </div>
                 <div class="stat">
                     <div class="v"><?php echo number_format($pegoutCount); ?></div>
-                    <div class="l">Peg-outs &middot; <?php echo number_format($pegoutTotal, 0); ?> LTC out</div>
+                    <div class="l">Peg-outs &middot; <?php echo number_format($pegoutTotal, 0); ?> <?php echo mwebscan_unit(); ?> out</div>
                 </div>
                 <div class="stat">
                     <div class="v"><?php echo ($netFlow >= 0 ? '+' : ''); echo number_format($netFlow, 0); ?></div>
-                    <div class="l">Net flow (LTC)</div>
+                    <div class="l">Net flow (<?php echo mwebscan_unit(); ?>)</div>
                 </div>
                 <?php if ($analysisAvailable && !empty($stats)): ?>
                     <div class="stat warn">
@@ -184,7 +184,7 @@ try {
             <div style="background:var(--card); box-shadow:0 0 10px var(--shadow); border-radius:8px; padding:16px; text-align:left;">
                 <form method="get" action="/trace" class="search-row">
                     <label for="q-trace">Trace an address or peg-in/peg-out txid</label>
-                    <input id="q-trace" type="text" name="q" placeholder="ltc1q... or a transaction id">
+                    <input id="q-trace" type="text" name="q" placeholder="<?php echo mwebscan_addr_example(); ?> or a transaction id">
                     <button type="submit" class="toggle-button">Trace</button>
                 </form>
                 <form method="get" action="/" id="privacyTool" class="search-row">
@@ -195,10 +195,10 @@ try {
             </div>
             <?php if ($lookup !== null): ?>
                 <div style="background:var(--card); box-shadow:0 0 10px var(--shadow); padding:16px; margin-top:12px; border-radius:6px; text-align:left;">
-                    <p style="margin:4px 0;"><strong><?php echo htmlspecialchars(number_format($lookup['amount'], 8), ENT_QUOTES); ?> LTC</strong></p>
+                    <p style="margin:4px 0;"><strong><?php echo htmlspecialchars(number_format($lookup['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></strong></p>
                     <?php $ps = (int) $lookup['privacy_score']; $pc = $ps >= 70 ? 'var(--ok)' : ($ps >= 40 ? 'var(--warn)' : 'var(--risk)'); ?>
                     <p style="margin:4px 0;">Privacy score: <strong style="color:<?php echo $pc; ?>;"><?php echo $ps; ?>/100</strong> (<?php echo htmlspecialchars($lookup['rating'], ENT_QUOTES); ?>)</p>
-                    <p style="margin:4px 0;">Anonymity set (rounded to <?php echo htmlspecialchars(number_format($lookup['rounded'], 1), ENT_QUOTES); ?> LTC): <strong><?php echo number_format($lookup['rounded_set']); ?></strong> peg-ins</p>
+                    <p style="margin:4px 0;">Anonymity set (rounded to <?php echo htmlspecialchars(number_format($lookup['rounded'], 1), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?>): <strong><?php echo number_format($lookup['rounded_set']); ?></strong> peg-ins</p>
                     <p style="margin:4px 0;">Exact-amount matches: <strong><?php echo number_format($lookup['exact_set']); ?></strong> peg-ins</p>
                     <p style="margin:8px 0 0; color:var(--muted);"><?php echo htmlspecialchars($lookup['advice'], ENT_QUOTES); ?></p>
                 </div>
@@ -212,7 +212,7 @@ try {
                 <?php foreach ($recommendations['best_pegin_amounts'] as $b): ?>
                     <?php if ((float) $b['amount'] <= 0) continue; ?>
                     <a class="badge service" style="margin:3px; display:inline-block; text-decoration:none;" href="/trace?q=<?php echo urlencode($b['amount']); ?>">
-                        <?php echo htmlspecialchars(number_format($b['amount'], 1), ENT_QUOTES); ?> LTC
+                        <?php echo htmlspecialchars(number_format($b['amount'], 1), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?>
                         <span style="opacity:0.7;">(<?php echo number_format($b['anonymity_set']); ?>)</span>
                     </a>
                 <?php endforeach; ?>
@@ -223,7 +223,7 @@ try {
                 <?php foreach ($recommendations['best_pegout_amounts'] as $b): ?>
                     <?php if ((float) $b['amount'] <= 0) continue; ?>
                     <a class="badge exchange" style="margin:3px; display:inline-block; text-decoration:none;" href="/trace?q=<?php echo urlencode($b['amount']); ?>">
-                        <?php echo htmlspecialchars(number_format($b['amount'], 1), ENT_QUOTES); ?> LTC
+                        <?php echo htmlspecialchars(number_format($b['amount'], 1), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?>
                         <span style="opacity:0.7;">(<?php echo number_format($b['anonymity_set']); ?>)</span>
                     </a>
                 <?php endforeach; ?>
@@ -246,9 +246,9 @@ try {
         </nav>
         <div class="filters">
             <p style="margin:0 0 6px; color:var(--muted); font-size:0.9em;">Filter the peg-in amount tables below:</p>
-            <label for="minAmount">Min LTC:</label>
+            <label for="minAmount">Min <?php echo mwebscan_unit(); ?>:</label>
             <input type="number" id="minAmount" step="0.01" min="0">
-            <label for="maxAmount">Max LTC:</label>
+            <label for="maxAmount">Max <?php echo mwebscan_unit(); ?>:</label>
             <input type="number" id="maxAmount" step="0.01" min="0">
             <label for="minOccurrences">Min Occurrences:</label>
             <input type="number" id="minOccurrences" min="1">
@@ -257,7 +257,7 @@ try {
         <table id="standardizedTable">
             <thead>
                 <tr>
-                    <th scope="col">Amount (LTC)</th>
+                    <th scope="col">Amount (<?php echo mwebscan_unit(); ?>)</th>
                     <th scope="col">Occurrences</th>
                 </tr>
             </thead>
@@ -279,7 +279,7 @@ try {
             <table id="rareStandardizedTable">
                 <thead>
                     <tr>
-                        <th>Amount (LTC)</th>
+                        <th>Amount (<?php echo mwebscan_unit(); ?>)</th>
                         <th>Occurrences</th>
                     </tr>
                 </thead>
@@ -303,7 +303,7 @@ try {
             <table id="randomTable">
                 <thead>
                     <tr>
-                        <th>Amount (LTC)</th>
+                        <th>Amount (<?php echo mwebscan_unit(); ?>)</th>
                         <th>Occurrences</th>
                     </tr>
                 </thead>
@@ -321,7 +321,7 @@ try {
         <table id="standardizedPegoutTable">
             <thead>
                 <tr>
-                    <th scope="col">Amount (LTC)</th>
+                    <th scope="col">Amount (<?php echo mwebscan_unit(); ?>)</th>
                     <th scope="col">Occurrences</th>
                 </tr>
             </thead>
@@ -344,7 +344,7 @@ try {
             <table id="rarePegoutTable">
                 <thead>
                     <tr>
-                        <th>Amount (LTC)</th>
+                        <th>Amount (<?php echo mwebscan_unit(); ?>)</th>
                         <th>Occurrences</th>
                     </tr>
                 </thead>
@@ -373,7 +373,7 @@ try {
                     <tr>
                         <th>Address</th>
                         <th>Peg-Outs</th>
-                        <th>Total (LTC)</th>
+                        <th>Total (<?php echo mwebscan_unit(); ?>)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -424,7 +424,7 @@ try {
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php echo htmlspecialchars(number_format($link['pegout_amount'], 8), ENT_QUOTES); ?> LTC<br/>
+                            <?php echo htmlspecialchars(number_format($link['pegout_amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?><br/>
                             <a href="/trace?q=<?php echo urlencode($link['pegout_txid']); ?>" style="font-family:monospace; font-size:0.8em;"><?php echo htmlspecialchars(substr($link['pegout_txid'], 0, 12), ENT_QUOTES); ?>...</a>
                         </td>
                         <td style="word-break:break-all;">
@@ -439,7 +439,7 @@ try {
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php echo htmlspecialchars(number_format($link['pegin_amount'], 8), ENT_QUOTES); ?> LTC<br/>
+                            <?php echo htmlspecialchars(number_format($link['pegin_amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?><br/>
                             <a href="/trace?q=<?php echo urlencode($link['pegin_txid']); ?>" style="font-family:monospace; font-size:0.8em;"><?php echo htmlspecialchars(substr($link['pegin_txid'], 0, 12), ENT_QUOTES); ?>...</a>
                         </td>
                         <td><?php echo htmlspecialchars(number_format($link['block_gap']), ENT_QUOTES); ?></td>
@@ -465,7 +465,7 @@ try {
                         <th>Address</th>
                         <th>Peg-Ins Funded</th>
                         <th>Peg-Outs Received</th>
-                        <th>Total Out (LTC)</th>
+                        <th>Total Out (<?php echo mwebscan_unit(); ?>)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -494,7 +494,7 @@ try {
                     <th>Category</th>
                     <th>Direction</th>
                     <th>Transactions</th>
-                    <th>Total (LTC)</th>
+                    <th>Total (<?php echo mwebscan_unit(); ?>)</th>
                 </tr>
             </thead>
             <tbody>

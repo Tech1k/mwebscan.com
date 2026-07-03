@@ -45,7 +45,7 @@
 
             <p>A free, <strong>read-only</strong> JSON API over the same engine the site uses. No key or sign-up for normal use.</p>
             <ul>
-                <li><strong>Base URL:</strong> <code>https://mwebscan.com/api</code> (<code>/api.php</code> also works if a deployment lacks URL rewriting)</li>
+                <li><strong>Base URL:</strong> <code><?php echo mwebscan_base_url(); ?>/api</code> (<code>/api.php</code> also works if a deployment lacks URL rewriting)</li>
                 <li><strong>Routing:</strong> path <code>/api/&lt;endpoint&gt;</code> (e.g. <code>/api/stats</code>), or query <code>?endpoint=&lt;name&gt;</code>.</li>
                 <li><strong>Format:</strong> JSON by default; add <code>&amp;format=csv</code> to <code>trace</code>, <code>links</code>, <code>pegin_amounts</code> to download a CSV.</li>
                 <li><strong>Rate limit:</strong> ~60 requests/minute per IP (HTTP <code>429</code> if exceeded). Use is subject to the <a href="/terms">Terms</a>.</li>
@@ -62,7 +62,7 @@
             <div class="ep">
                 <h3><span class="get">GET</span> /api/health</h3>
                 <p>Sync height and data freshness (how far the scanner has got, and how long ago the analysis last ran).</p>
-                <pre>curl "https://mwebscan.com/api/health"</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/health"</pre>
                 <pre>{
   "health": {
     "ok": true, "last_scanned_block": 2870431,
@@ -76,7 +76,7 @@
             <div class="ep">
                 <h3><span class="get">GET</span> /api/stats</h3>
                 <p>Headline analysis counts (totals, linkable peg-outs, labelled addresses, scores...).</p>
-                <pre>curl "https://mwebscan.com/api/stats"</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/stats"</pre>
                 <pre>{
   "stats": {
     "total_pegins": 51234, "total_pegouts": 48910,
@@ -90,9 +90,9 @@
 
             <div class="ep">
                 <h3><span class="get">GET</span> /api/privacy?amount=&lt;ltc&gt;</h3>
-                <p class="params"><strong>amount</strong>: positive LTC value.</p>
+                <p class="params"><strong>amount</strong>: positive <?php echo mwebscan_unit(); ?> value.</p>
                 <p>Wallet pre-flight check: how well a peg-in of this amount blends in (anonymity set + privacy score + advice). Amount only, so no address leaves the client.</p>
-                <pre>curl "https://mwebscan.com/api/privacy?amount=1.0"</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/privacy?amount=1.0"</pre>
                 <pre>{
   "privacy": {
     "amount": 1.0, "rounded": 1.0,
@@ -107,17 +107,17 @@
             <div class="ep">
                 <h3><span class="get">GET</span> /api/recommendations</h3>
                 <p>Live privacy guidance: best peg-in amounts right now, suggested wait before pegging out, and tips.</p>
-                <pre>curl "https://mwebscan.com/api/recommendations"</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/recommendations"</pre>
             </div>
 
             <div class="ep">
                 <h3><span class="get">GET</span> /api/trace?q=&lt;address|txid&gt;</h3>
                 <p class="params"><strong>q</strong>: a Litecoin address, peg-in txid, or peg-out txid. &nbsp;Optional <strong>format=csv</strong>.</p>
                 <p>Full one-hop trace across the MWEB hop: funders -> peg-in -> linked peg-outs -> destinations, with entity tags and confidences.</p>
-                <pre>curl "https://mwebscan.com/api/trace?q=ltc1q..."</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/trace?q=<?php echo mwebscan_addr_example(); ?>"</pre>
                 <pre>{
   "trace": {
-    "query": "ltc1q...", "type": "address",
+    "query": "<?php echo mwebscan_addr_example(); ?>", "type": "address",
     "attribution": { "entity": "Binance", "category": "exchange", "via": "direct" },
     "pegins": [ { "txid": "d32a...", "amount": 64.50828331,
                   "links": [ { "pegout_txid": "ae02...", "confidence": 1.0,
@@ -132,21 +132,21 @@
                 <h3><span class="get">GET</span> /api/follow?q=&lt;address&gt;&amp;depth=3</h3>
                 <p class="params"><strong>q</strong>: address. &nbsp;<strong>depth</strong>: hops to follow (1-10, default 3).</p>
                 <p>Multi-hop "follow the money": chains repeated peg cycles together. Multiply the per-hop confidences for the chain total.</p>
-                <pre>curl "https://mwebscan.com/api/follow?q=ltc1q...&depth=4"</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/follow?q=<?php echo mwebscan_addr_example(); ?>&depth=4"</pre>
             </div>
 
             <div class="ep">
                 <h3><span class="get">GET</span> /api/address?q=&lt;address&gt;</h3>
                 <p class="params"><strong>q</strong>: address.</p>
                 <p>Summary for an address: entity attribution plus peg-outs received and peg-ins funded.</p>
-                <pre>curl "https://mwebscan.com/api/address?q=ltc1q..."</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/address?q=<?php echo mwebscan_addr_example(); ?>"</pre>
             </div>
 
             <div class="ep">
                 <h3><span class="get">GET</span> /api/links?min_confidence=0.5&amp;limit=100</h3>
                 <p class="params"><strong>min_confidence</strong>: 0-1 (default 0.5). &nbsp;<strong>limit</strong>: 1-500 (default 100). &nbsp;Optional <strong>format=csv</strong>.</p>
                 <p>The round-trip links: peg-outs matched to earlier peg-ins, with confidence, AML risk and reasons.</p>
-                <pre>curl "https://mwebscan.com/api/links?min_confidence=0.9"</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/links?min_confidence=0.9"</pre>
                 <pre>{
   "min_confidence": 0.9, "count": 1,
   "links": [
@@ -163,13 +163,13 @@
                 <h3><span class="get">GET</span> /api/pegin_amounts?limit=100</h3>
                 <p class="params"><strong>limit</strong>: 1-500 (default 100). &nbsp;Optional <strong>format=csv</strong>.</p>
                 <p>Most common (rounded) peg-in amounts and their counts (the "blend in with the crowd" data).</p>
-                <pre>curl "https://mwebscan.com/api/pegin_amounts?limit=50"</pre>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/pegin_amounts?limit=50"</pre>
             </div>
 
             <h2>Wallet integration</h2>
             <p>For a privacy wallet, the right call is a <strong>pre-flight check that never sends a user's address</strong>. Query <code>privacy</code> with the <em>amount</em> only, before a peg-in:</p>
             <pre>// nudge the user toward a more private amount
-const r = await fetch(`https://mwebscan.com/api/privacy?amount=${amt}`);
+const r = await fetch(`<?php echo mwebscan_base_url(); ?>/api/privacy?amount=${amt}`);
 const { privacy } = await r.json();
 if (privacy.privacy_score &lt; 40) {
     warn(`This amount is easy to single out (score ${privacy.privacy_score}/100). ` +

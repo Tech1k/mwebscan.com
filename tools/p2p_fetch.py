@@ -28,20 +28,28 @@ import random
 import socket
 import struct
 import hashlib
+import os
+import sys
 
-# --- Litecoin mainnet constants ---
-MAGIC = b'\xfb\xc0\xb6\xdb'
-DEFAULT_PORT = 9333
+# Network parameters (Litecoin mainnet by default; testnet via MWEBSCAN_NETWORK).
+# network.py lives at the repo root; add it to the path so this file works whether
+# imported by mwebp2p.py or run directly as a CLI from tools/.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from network import PARAMS as _NET
+
+# --- Network constants (resolved from the active network) ---
+MAGIC = _NET['MAGIC']
+DEFAULT_PORT = _NET['DEFAULT_PORT']
 PROTOCOL_VERSION = 70015
 
-# Witness program version -> MWEB output type.
+# Witness program version -> MWEB output type. (Identical on mainnet and testnet.)
 WITVER_PEGIN = 9     # OP_9 (0x59) -> witness_mweb_pegin   (program = kernel ID, 32B)
 WITVER_HOGADDR = 8   # OP_8 (0x58) -> witness_mweb_hogaddr  (program = header hash, 32B)
 
-# Litecoin base58 address version bytes.
-P2PKH_VERSION = 0x30   # 'L...'
-P2SH_VERSION = 0x32    # 'M...'
-BECH32_HRP = 'ltc'
+# Base58 address version bytes / bech32 HRP (network-specific).
+P2PKH_VERSION = _NET['P2PKH_VERSION']
+P2SH_VERSION = _NET['P2SH_VERSION']
+BECH32_HRP = _NET['BECH32_HRP']
 
 
 def dsha256(b):
@@ -84,11 +92,12 @@ def _bits_to_target(bits):
     return mant << (8 * (exp - 3))
 
 
-# Litecoin mainnet minimum-difficulty target (consensus.powLimit, compact
-# 0x1e0fffff). A header claiming an easier (larger) target than this is rejected:
-# without this floor a peer could serve a forged low-difficulty chain that any
-# scrypt hash trivially satisfies.
-POW_LIMIT = _bits_to_target(0x1e0fffff)
+# Minimum-difficulty target (consensus.powLimit). A header claiming an easier
+# (larger) target than this is rejected, so a peer cannot serve a forged
+# low-difficulty chain any scrypt hash trivially satisfies. The powLimit and its
+# compact form (0x1e0fffff) are identical on mainnet and testnet; testnet's
+# min-difficulty headers still satisfy target <= powLimit, so the floor holds.
+POW_LIMIT = _bits_to_target(_NET['POW_LIMIT_BITS'])
 
 
 def check_pow(hdr80):
@@ -363,15 +372,9 @@ NODE_NETWORK_LIMITED = 1 << 10  # pruned: only the last ~288 blocks
 MAX_MSG_BYTES = 32 * 1024 * 1024  # cap on any single P2P message
 MAX_WAIT_MSGS = 1000              # rotate peer after this many off-topic msgs
 
-# Litecoin mainnet DNS seeds (chainparams.cpp CMainParams); each resolves to
-# many live peer IPs.
-DNS_SEEDS = [
-    'seed-a.litecoin.loshan.co.uk',
-    'dnsseed.thrasher.io',
-    'dnsseed.litecointools.com',
-    'dnsseed.litecoinpool.org',
-    'dnsseed.koin-project.com',
-]
+# DNS seeds for the active network (chainparams.cpp); each resolves to many
+# live peer IPs.
+DNS_SEEDS = _NET['DNS_SEEDS']
 
 
 def _checksum(payload):
@@ -601,12 +604,7 @@ def iter_new_blocks(sock, locator, have_height):
 # Consensus data comes from P2P + merkle, not here; a lying server can only
 # mislabel a source.
 # --------------------------------------------------------------------------
-ELECTRUM_SERVERS = [
-    ('electrum-ltc.bysh.me', 50002),
-    ('electrum.ltc.xurious.com', 50002),
-    ('ltc.rentonisk.com', 50002),
-    ('backup.electrum-ltc.org', 443),
-]
+ELECTRUM_SERVERS = _NET['ELECTRUM_SERVERS']
 
 
 class ElectrumClient:

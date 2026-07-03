@@ -5,8 +5,11 @@ import time
 import os
 import concurrent.futures
 
+from network import PARAMS as _NET
+import tools.p2p_fetch as _p2p   # MWEB-aware raw-block parser, shared with mwebp2p
+
 # Credentials come from the environment, not source.
-RPC_URL = os.environ.get('LTC_RPC_URL', 'http://127.0.0.1:9332/')
+RPC_URL = os.environ.get('LTC_RPC_URL', _NET['RPC_URL'])
 RPC_USER = os.environ.get('LTC_RPC_USER', 'litecoinrpc')
 RPC_PASSWORD = os.environ.get('LTC_RPC_PASSWORD', 'litecoinrpcpass')
 COMMIT_EVERY_N_BLOCKS = 100
@@ -26,14 +29,20 @@ BATCH_SIZE = int(os.environ.get('MWEBSCAN_BATCH_SIZE', '100'))
 GETBLOCK_BATCH = int(os.environ.get('MWEBSCAN_GETBLOCK_BATCH', '4'))
 # Concurrent getblock requests. Set near the node's -rpcthreads.
 RPC_WORKERS = int(os.environ.get('MWEBSCAN_RPC_WORKERS', '8'))
+# Some Litecoin Core builds return HTTP 500 on getblock verbosity 2 for MWEB
+# blocks (serializing the range proofs/kernels into JSON aborts). When a whole
+# window fails that way, fall back to raw blocks (verbosity 0) parsed locally
+# with the MWEB-aware deserializer. MWEBSCAN_RAW_BLOCKS=1 skips the v2 attempt
+# and uses raw blocks from the start.
+RAW_BLOCKS = os.environ.get('MWEBSCAN_RAW_BLOCKS', '0') == '1'
 # SQLite page cache (MiB) and memory-map (MiB).
 SQLITE_CACHE_MIB = int(os.environ.get('MWEBSCAN_CACHE_MIB', '256'))
 SQLITE_MMAP_MIB = int(os.environ.get('MWEBSCAN_MMAP_MIB', '512'))
 # Recent blocks re-verified each poll to catch reorgs.
 REORG_DEPTH = 12
 
-# MWEB activated at block 2265984; start a bit earlier for margin.
-MWEB_ACTIVATION_HEIGHT = 2265950
+# MWEB activation height (network-specific; see network.py).
+MWEB_ACTIVATION_HEIGHT = _NET['MWEB_ACTIVATION_HEIGHT']
 
 # Record each peg-in's public funding address (the input contributing the most
 # value), tying the MWEB entry to a public identity for address-reuse linking.
@@ -44,7 +53,7 @@ TRACK_PEGIN_SOURCES = False
 HOGADDR_TYPE = 'witness_mweb_hogaddr'
 PEGIN_TYPE = 'witness_mweb_pegin'
 
-conn = sqlite3.connect('mwebscan.db')
+conn = sqlite3.connect(_NET['DB_FILENAME'])
 cursor = conn.cursor()
 conn.execute("PRAGMA journal_mode = WAL;")
 # NORMAL is crash-safe under WAL and nearly as fast as OFF, which risks
@@ -237,6 +246,60 @@ def fetch_blocks(hashes):
         for sub in subs:
             result.update(zip(sub, fetch_sub(sub)))
     return result
+
+
+def fetch_blocks_raw(heights, hashes):
+    """Fetch blocks as raw hex (getblock verbosity 0) and parse them locally with
+    the MWEB-aware deserializer, returning {hash: block} shaped like fetch_blocks.
+    Used when the node can't serialize verbosity 2 (some Litecoin Core builds 500
+    on MWEB blocks). A block whose local merkle check fails is dropped so the
+    caller retries instead of persisting a misparse."""
+    pairs = [(h, bh) for h, bh in zip(heights, hashes) if bh]
+    subs = [pairs[i:i + GETBLOCK_BATCH] for i in range(0, len(pairs), GETBLOCK_BATCH)]
+
+    def fetch_sub(sub):
+        try:
+            raws = rpc_batch([('getblock', [bh, 0]) for _, bh in sub])
+        except Exception as e:
+            print(f"  raw getblock batch failed ({sub[0][0]}...): {e}")
+            raws = [None] * len(sub)
+        out = {}
+        for (h, bh), raw in zip(sub, raws):
+            if not raw:
+                continue
+            block = _p2p.deserialize_block(bytes.fromhex(raw), h)
+            if block.get('_merkle_ok'):
+                out[bh] = block
+            else:
+                print(f"  raw block {h} failed local merkle check; skipping")
+        return out
+
+    result = {}
+    if RPC_WORKERS > 1 and len(subs) > 1:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=RPC_WORKERS) as ex:
+            for part in ex.map(fetch_sub, subs):
+                result.update(part)
+    else:
+        for sub in subs:
+            result.update(fetch_sub(sub))
+    return result
+
+
+def fetch_window(heights, hashes):
+    """Return {hash: block} for a window. Uses getblock verbosity 2, then fills
+    any block the node couldn't serialize from raw blocks (verbosity 0). If a
+    whole window fails v2, switch to raw for the rest of the session: that means
+    the node can't serialize MWEB blocks to JSON at all, so retrying v2 is waste."""
+    global RAW_BLOCKS
+    valid = [(h, bh) for h, bh in zip(heights, hashes) if bh]
+    blocks = {} if RAW_BLOCKS else fetch_blocks(hashes)
+    missing = [(h, bh) for h, bh in valid if not blocks.get(bh)]
+    if missing:
+        if not RAW_BLOCKS and valid and len(missing) == len(valid):
+            print("  getblock verbosity 2 unavailable; switching to raw-block parsing")
+            RAW_BLOCKS = True
+        blocks.update(fetch_blocks_raw([h for h, _ in missing], [bh for _, bh in missing]))
+    return blocks
 
 
 def get_last_scanned_block():
@@ -436,7 +499,7 @@ def scan_blocks():
         heights = list(range(height, win_end + 1))
 
         hashes = rpc_batch([('getblockhash', [h]) for h in heights])
-        block_by_hash = fetch_blocks(hashes)
+        block_by_hash = fetch_window(heights, hashes)
 
         # Process in height order, stopping at the first gap. Advance the cursor
         # only over the contiguous successful prefix so a transient failure

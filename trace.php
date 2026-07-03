@@ -32,7 +32,7 @@ function risk_color($s)
 function tx_link($txid)
 {
     $short = htmlspecialchars(substr($txid, 0, 14), ENT_QUOTES) . '...';
-    return '<a class="tx" href="https://litecoinspace.org/tx/' . htmlspecialchars($txid, ENT_QUOTES) . '" target="_blank" rel="noopener">' . $short . '</a>';
+    return '<a class="tx" href="' . htmlspecialchars(mwebscan_tx_url($txid), ENT_QUOTES) . '" target="_blank" rel="noopener">' . $short . '</a>';
 }
 
 function trace_link($value, $label = null)
@@ -108,7 +108,7 @@ function entity_badge($attr)
             <?php if ($trace['type'] === 'amount' && $trace['amount_privacy']): ?>
                 <?php $ap = $trace['amount_privacy']; $pc = $ap['privacy_score'] >= 70 ? 'var(--ok)' : ($ap['privacy_score'] >= 40 ? 'var(--warn)' : 'var(--risk)'); ?>
                 <div class="node" style="max-width:640px; margin:0 auto 10px; text-align:center;">
-                    <h3>Amount privacy: <?php echo htmlspecialchars(number_format($ap['amount'], 8), ENT_QUOTES); ?> LTC</h3>
+                    <h3>Amount privacy: <?php echo htmlspecialchars(number_format($ap['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></h3>
                     <p style="margin:4px 0;">Privacy score: <strong style="color:<?php echo $pc; ?>;"><?php echo (int) $ap['privacy_score']; ?>/100</strong> (<?php echo htmlspecialchars($ap['rating'], ENT_QUOTES); ?>)</p>
                     <p style="margin:4px 0;">Anonymity set: <strong><?php echo number_format($ap['rounded_set']); ?></strong> peg-ins (rounded) &middot; <strong><?php echo number_format($ap['exact_set']); ?></strong> exact</p>
                     <p style="margin:6px 0 0; color:var(--muted);"><?php echo htmlspecialchars($ap['advice'], ENT_QUOTES); ?></p>
@@ -130,7 +130,7 @@ function entity_badge($attr)
                                 <?php foreach (array_slice($pin['inputs'], 0, 6) as $in): ?>
                                     <div style="margin-bottom:4px;">
                                         <span class="addr"><?php echo trace_link($in['address'], substr($in['address'], 0, 18) . '...'); ?></span><?php echo entity_badge($in['attribution']); ?>
-                                        <br/><span style="color:var(--muted);"><?php echo htmlspecialchars(number_format($in['value'], 4), ENT_QUOTES); ?> LTC</span>
+                                        <br/><span style="color:var(--muted);"><?php echo htmlspecialchars(number_format($in['value'], 4), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></span>
                                     </div>
                                 <?php endforeach; ?>
                             <?php elseif (!empty($pin['source_address'])): ?>
@@ -142,7 +142,7 @@ function entity_badge($attr)
                         <div class="arrow">-></div>
                         <div class="node" style="border:2px solid var(--accent);">
                             <h3>Peg-in</h3>
-                            <div class="amt"><?php echo htmlspecialchars(number_format($pin['amount'], 8), ENT_QUOTES); ?> LTC</div>
+                            <div class="amt"><?php echo htmlspecialchars(number_format($pin['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></div>
                             <div>block <?php echo htmlspecialchars($pin['block_height'], ENT_QUOTES); ?></div>
                             <?php echo tx_link($pin['txid']); ?>
                             <?php if (!empty($pin['score'])): ?>
@@ -160,7 +160,7 @@ function entity_badge($attr)
                                 <?php foreach ($pin['links'] as $lk): ?>
                                     <div style="margin-bottom:6px;">
                                         <span class="<?php echo conf_class($lk['confidence']); ?>"><?php echo htmlspecialchars(number_format($lk['confidence'] * 100, 1), ENT_QUOTES); ?>%</span>
-                                        &middot; <?php echo htmlspecialchars(number_format($lk['pegout_amount'], 8), ENT_QUOTES); ?> LTC<br/>
+                                        &middot; <?php echo htmlspecialchars(number_format($lk['pegout_amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?><br/>
                                         <?php echo $lk['pegout_address'] ? trace_link($lk['pegout_address'], substr($lk['pegout_address'], 0, 18) . '...') : ''; ?>
                                         <?php echo entity_badge(['entity' => $lk['pegout_entity'], 'category' => $lk['pegout_category']]); ?>
                                         <br/><?php echo tx_link($lk['pegout_txid']); ?>
@@ -183,7 +183,7 @@ function entity_badge($attr)
                             <?php if (!empty($pout['links'])): ?>
                                 <?php $lk = $pout['links'][0]; ?>
                                 <span class="<?php echo conf_class($lk['confidence']); ?>"><?php echo htmlspecialchars(number_format($lk['confidence'] * 100, 1), ENT_QUOTES); ?>%</span>
-                                &middot; <?php echo htmlspecialchars(number_format($lk['pegin_amount'], 8), ENT_QUOTES); ?> LTC<br/>
+                                &middot; <?php echo htmlspecialchars(number_format($lk['pegin_amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?><br/>
                                 <?php echo tx_link($lk['pegin_txid']); ?>
                             <?php else: ?>
                                 <span style="color:var(--muted);">no confident peg-in match</span>
@@ -196,7 +196,7 @@ function entity_badge($attr)
                         </div>
                         <div class="node" style="border:2px solid var(--warn);">
                             <h3>Peg-out</h3>
-                            <div class="amt"><?php echo htmlspecialchars(number_format($pout['amount'], 8), ENT_QUOTES); ?> LTC</div>
+                            <div class="amt"><?php echo htmlspecialchars(number_format($pout['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></div>
                             <div>block <?php echo htmlspecialchars($pout['block_height'], ENT_QUOTES); ?></div>
                             <?php echo tx_link($pout['txid']); ?>
                             <?php if (!empty($pout['score'])): ?>
@@ -226,10 +226,10 @@ function entity_badge($attr)
                         <div class="node">
                             <h3>Hop <?php echo $i + 1; ?></h3>
                             <div class="addr"><?php echo trace_link($h['from'], substr($h['from'], 0, 14) . '...'); ?></div>
-                            <div>peg-in <?php echo htmlspecialchars(number_format($h['pegin']['amount'], 4), ENT_QUOTES); ?> LTC</div>
+                            <div>peg-in <?php echo htmlspecialchars(number_format($h['pegin']['amount'], 4), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></div>
                             <?php if ($h['pegout']): ?>
                                 <div class="<?php echo conf_class($h['confidence']); ?>"><?php echo htmlspecialchars(number_format($h['confidence'] * 100, 1), ENT_QUOTES); ?>% -></div>
-                                <div>peg-out <?php echo htmlspecialchars(number_format($h['pegout']['pegout_amount'], 4), ENT_QUOTES); ?> LTC</div>
+                                <div>peg-out <?php echo htmlspecialchars(number_format($h['pegout']['pegout_amount'], 4), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></div>
                                 <div class="addr"><?php echo $h['to'] ? trace_link($h['to'], substr($h['to'], 0, 14) . '...') : ''; ?><?php echo entity_badge($h['to_attribution']); ?></div>
                             <?php else: ?>
                                 <div style="color:var(--muted);">no confident exit</div>

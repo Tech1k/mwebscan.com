@@ -2,6 +2,10 @@ mwebscan.db
 mwebscan.db-wal
 mwebscan.db-shm
 mwebscan.db-journal
+mwebscan-testnet.db
+mwebscan-testnet.db-wal
+mwebscan-testnet.db-shm
+mwebscan-testnet.db-journal
 __pycache__/
 
 # Real / sourced label data is the moat and may carry third-party licence terms

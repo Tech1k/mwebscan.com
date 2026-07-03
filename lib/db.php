@@ -36,10 +36,12 @@ if (MWEBSCAN_DEBUG) {
     });
 }
 
+require_once __DIR__ . '/network.php';
+
 /** Open the SQLite database with exceptions enabled. */
 function mwebscan_db($path = null)
 {
-    $path = $path ?: (__DIR__ . '/../mwebscan.db');
+    $path = $path ?: mwebscan_db_path();
     $db = new PDO('sqlite:' . $path);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     // Wait up to 5s for the writer instead of erroring while the analysis

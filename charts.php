@@ -68,7 +68,7 @@ function render_chart($title, $values, $dates, $cls, $unit, $decimals, $fill = f
     }
 
     $latest = end($vals);
-    $sign = ($unit === 'LTC' && $latest > 0 && strpos($title, 'Flow') !== false) ? '+' : '';
+    $sign = ($latest > 0 && strpos($title, 'Flow') !== false) ? '+' : '';
 
     $card = '<div class="chart-card"><div class="chart-head"><span class="chart-title">' . $title_esc
         . '</span><span class="chart-latest cl-' . $cls . '">' . $sign
@@ -162,14 +162,14 @@ $totPegouts    = array_sum($pegouts);
                 <p style="text-align:center; color:var(--muted);">No time-series data yet. Run the scanner and analysis pass first.</p>
             <?php else: ?>
                 <div class="chart-summary">
-                    <div class="csum"><div class="v"><?php echo number_format($currentSupply, 0); ?></div><div class="l">MWEB Supply (LTC)</div></div>
-                    <div class="csum"><div class="v"><?php echo number_format($totPeginAmt, 0); ?></div><div class="l">Total Pegged In (LTC)</div></div>
-                    <div class="csum"><div class="v"><?php echo number_format($totPegoutAmt, 0); ?></div><div class="l">Total Pegged Out (LTC)</div></div>
+                    <div class="csum"><div class="v"><?php echo number_format($currentSupply, 0); ?></div><div class="l">MWEB Supply (<?php echo mwebscan_unit(); ?>)</div></div>
+                    <div class="csum"><div class="v"><?php echo number_format($totPeginAmt, 0); ?></div><div class="l">Total Pegged In (<?php echo mwebscan_unit(); ?>)</div></div>
+                    <div class="csum"><div class="v"><?php echo number_format($totPegoutAmt, 0); ?></div><div class="l">Total Pegged Out (<?php echo mwebscan_unit(); ?>)</div></div>
                     <div class="csum"><div class="v"><?php echo number_format($totPegins); ?> / <?php echo number_format($totPegouts); ?></div><div class="l">Peg-ins / Peg-outs</div></div>
                 </div>
 
-                <?php echo render_chart('MWEB Supply', $supply, $dates, 'blue', 'LTC', 0, true); ?>
-                <?php echo render_chart('Daily Net Flow (peg-in minus peg-out)', $netflow, $dates, 'green', 'LTC', 1); ?>
+                <?php echo render_chart('MWEB Supply', $supply, $dates, 'blue', mwebscan_unit(), 0, true); ?>
+                <?php echo render_chart('Daily Net Flow (peg-in minus peg-out)', $netflow, $dates, 'green', mwebscan_unit(), 1); ?>
                 <?php echo render_chart('Daily Peg-in Count', $pegins, $dates, 'blue', 'peg-ins', 0); ?>
                 <?php echo render_chart('Daily Peg-out Count', $pegouts, $dates, 'orange', 'peg-outs', 0); ?>
 

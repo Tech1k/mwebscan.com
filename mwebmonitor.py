@@ -22,7 +22,9 @@ try:
 except ImportError:
     requests = None
 
-DB_PATH = 'mwebscan.db'
+from network import PARAMS as _NET
+
+DB_PATH = _NET['DB_FILENAME']
 WEBHOOK_TIMEOUT = 10
 
 

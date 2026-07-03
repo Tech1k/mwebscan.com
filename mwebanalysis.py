@@ -24,7 +24,9 @@ import json
 import time
 from bisect import bisect_left, bisect_right
 
-DB_PATH = 'mwebscan.db'
+from network import PARAMS as _NET
+
+DB_PATH = _NET['DB_FILENAME']
 
 # Candidate peg-in amount is in [pegout, pegout + tol] (peg-out = peg-in - fees).
 # Litoshi = 1e-8 LTC.
