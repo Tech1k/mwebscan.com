@@ -43,6 +43,20 @@ $mwebTotalValue = $latest['supply'] ?? 'N/A';
 $syncHeightValue = $syncHeight['last_scanned_block'] ?? ($latest['block_height'] ?? 'N/A');
 $netFlow = $peginTotal - $pegoutTotal;
 
+// Latest MWEB internal-activity metrics (UTXO-set size + cumulative kernels),
+// separately guarded so a pre-migration DB can't break the headline stats.
+$mwebTxos = $mwebKernels = null;
+try {
+    $mrow = $db->query("SELECT mweb_txos, mweb_kernels FROM mweb_blocks
+                        WHERE mweb_txos IS NOT NULL ORDER BY block_height DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    if ($mrow) {
+        $mwebTxos = $mrow['mweb_txos'] !== null ? (int) $mrow['mweb_txos'] : null;
+        $mwebKernels = $mrow['mweb_kernels'] !== null ? (int) $mrow['mweb_kernels'] : null;
+    }
+} catch (Exception $e) {
+    // MWEB-metric columns not present yet; tiles stay hidden.
+}
+
 // --- Chain-analysis results (produced by mwebanalysis.py) ----------------
 // These tables may not exist until the analysis pass has run; hide the
 // analysis sections when they're missing.
@@ -151,6 +165,18 @@ try {
                     <div class="v"><?php echo ($netFlow >= 0 ? '+' : ''); echo number_format($netFlow, 0); ?></div>
                     <div class="l">Net flow (<?php echo mwebscan_unit(); ?>)</div>
                 </div>
+                <?php if ($mwebTxos !== null): ?>
+                <div class="stat">
+                    <div class="v"><?php echo number_format($mwebTxos); ?></div>
+                    <div class="l"><?php echo mweb_icon(); ?>MWEB UTXO set</div>
+                </div>
+                <?php endif; ?>
+                <?php if ($mwebKernels): ?>
+                <div class="stat">
+                    <div class="v"><?php echo number_format($mwebKernels); ?></div>
+                    <div class="l"><?php echo mweb_icon(); ?>MWEB kernels</div>
+                </div>
+                <?php endif; ?>
                 <?php if ($analysisAvailable && !empty($stats)): ?>
                     <div class="stat warn">
                         <div class="v"><?php echo number_format((int) ($stats['linkable_pegouts'] ?? 0)); ?></div>
