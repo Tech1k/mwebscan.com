@@ -21,10 +21,15 @@ const API_VERSION = '1';
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 
-// Set to a secret string to require ?key= / X-API-Key on every request.
-$REQUIRED_KEY = '';
-// Per-IP request cap per 60s window (0 disables).
-$RATE_LIMIT = 60;
+// Require ?key= / X-API-Key on every request (set for a dedicated instance).
+$REQUIRED_KEY = getenv('MWEBSCAN_API_KEY') ?: '';
+// Per-IP request cap per 60s window (0 disables). Env-overridable so a dedicated
+// explorer instance can raise or disable it.
+$RATE_LIMIT = getenv('MWEBSCAN_API_RATE_LIMIT');
+$RATE_LIMIT = ($RATE_LIMIT === false || $RATE_LIMIT === '') ? 60 : (int) $RATE_LIMIT;
+// Server IPs (comma-separated) that bypass the rate limit -- e.g. a trusted
+// explorer backend calling server-side.
+$RATE_ALLOW_IPS = array_filter(array_map('trim', explode(',', (string) getenv('MWEBSCAN_API_ALLOW_IPS'))));
 
 function out($data, $code = 200)
 {
@@ -32,6 +37,10 @@ function out($data, $code = 200)
     header('X-Content-Type-Options: nosniff');
     header('Cache-Control: no-store');
     $data['version'] = API_VERSION;
+    // Attach response metadata (network + data-freshness cursors) once computed.
+    if (isset($GLOBALS['API_META'])) {
+        $data += $GLOBALS['API_META'];
+    }
     echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -127,6 +136,23 @@ try {
     err('database unavailable', 503);
 }
 
+// Metadata attached to every response by out(): the active network (so a
+// misconfigured client fails loudly instead of trusting mainnet data on a
+// testnet page) and data-freshness cursors (scan height + analysis timestamp).
+$GLOBALS['API_META'] = ['network' => mwebscan_network()];
+try {
+    $GLOBALS['API_META']['as_of_height'] =
+        (int) $db->query("SELECT last_scanned_block FROM scan_progress WHERE id=1")->fetchColumn();
+} catch (Exception $e) {
+    $GLOBALS['API_META']['as_of_height'] = null;
+}
+try {
+    $u = $db->query("SELECT MAX(updated) FROM cache")->fetchColumn();
+    $GLOBALS['API_META']['updated_at'] = ($u === false || $u === null) ? null : (int) $u;
+} catch (Exception $e) {
+    $GLOBALS['API_META']['updated_at'] = null;
+}
+
 // Disabled over the Tor onion service: every request there arrives from the
 // loopback IP, so per-IP rate limiting collapses into one shared bucket.
 // Browsing the site over Tor still works; programmatic use goes through clearnet.
@@ -141,7 +167,7 @@ if ($REQUIRED_KEY !== '') {
     }
 }
 
-if ($RATE_LIMIT > 0) {
+if ($RATE_LIMIT > 0 && !in_array($_SERVER['REMOTE_ADDR'] ?? '', $RATE_ALLOW_IPS, true)) {
     rate_limit($db, $RATE_LIMIT);
 }
 
@@ -162,6 +188,7 @@ switch ($endpoint) {
                 'address' => 'GET ?endpoint=address&q=<address>  (attribution + peg summary)',
                 'links' => 'GET ?endpoint=links&min_confidence=0.5&limit=100',
                 'pegin_amounts' => 'GET ?endpoint=pegin_amounts&limit=100',
+                'block' => 'GET ?endpoint=block&q=<height|hash>  (per-block MWEB analysis overlay)',
             ],
             'disclaimer' => 'Cross-MWEB links are heuristic, not proof. Public-chain data only.',
         ]);
@@ -324,6 +351,113 @@ switch ($endpoint) {
         }
         unset($row);
         out(['count' => count($rows), 'pegin_amounts' => $rows]);
+
+    case 'block':
+        // Per-block MWEB *analysis overlay*: the inferences an explorer can't
+        // compute from its own node (linkage, AML risk, entity, privacy score),
+        // keyed by txid:vout so the caller joins to its own authoritative pegs.
+        // Amounts are LTC decimals for reference only (mwebscan stores float LTC
+        // and is not authoritative on exact sats).
+        $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+        if ($q === '') {
+            err('q (block height or hash) required');
+        }
+        $byHeight = ctype_digit($q);
+        if (!$byHeight && !preg_match('/^[0-9a-fA-F]{64}$/', $q)) {
+            err('q must be a block height or a 64-character block hash');
+        }
+        try {
+            if ($byHeight) {
+                $st = $db->prepare("SELECT block_height, block_hash, block_time, supply, mweb_kernels, mweb_txos
+                                    FROM mweb_blocks WHERE block_height = ?");
+                $st->execute([(int) $q]);
+            } else {
+                $st = $db->prepare("SELECT block_height, block_hash, block_time, supply, mweb_kernels, mweb_txos
+                                    FROM mweb_blocks WHERE block_hash = ?");
+                $st->execute([strtolower($q)]);
+            }
+            $b = $st->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            // Scanner tables absent (fresh instance): clean JSON, not the HTML 503.
+            err('block data not available yet', 503);
+        }
+        if (!$b) {
+            // Pre-activation, unknown, or not yet scanned: caller degrades to
+            // its own boundary-only view.
+            err('no MWEB block found for that height/hash', 404);
+        }
+        $height = (int) $b['block_height'];
+        $analysis = mwebscan_table_exists($db, 'mweb_links');
+
+        if ($analysis) {
+            $st = $db->prepare("
+                SELECT po.txid, po.vout, po.amount, po.address,
+                       l.pegin_txid, l.pegin_height, l.confidence, l.reasons,
+                       s.risk_score, a.entity AS ent, a.category AS cat
+                FROM mweb_pegouts po
+                LEFT JOIN mweb_links l ON l.pegout_txid = po.txid AND l.pegout_vout = po.vout
+                LEFT JOIN pegout_scores s ON s.txid = po.txid AND s.vout = po.vout
+                LEFT JOIN address_attribution a ON a.address = po.address
+                WHERE po.block_height = ? ORDER BY po.vout");
+        } else {
+            $st = $db->prepare("SELECT txid, vout, amount, address FROM mweb_pegouts
+                                WHERE block_height = ? ORDER BY vout");
+        }
+        $st->execute([$height]);
+        $pegouts = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $po = ['txid' => $r['txid'], 'vout' => (int) $r['vout'],
+                   'amount_ltc' => $r['amount'] + 0, 'address' => $r['address']];
+            if ($analysis) {
+                $po['linked_pegin'] = $r['pegin_txid'] === null ? null
+                    : ['txid' => $r['pegin_txid'],
+                       'height' => $r['pegin_height'] === null ? null : (int) $r['pegin_height']];
+                $po['confidence'] = $r['confidence'] === null ? null : $r['confidence'] + 0;
+                $po['aml_risk'] = $r['risk_score'] === null ? null : (int) $r['risk_score'];
+                $po['entity'] = $r['ent'] === null ? null : ['name' => $r['ent'], 'category' => $r['cat']];
+                $po['reasons'] = $r['reasons'] === null ? null : json_decode($r['reasons'], true);
+            }
+            $pegouts[] = $po;
+        }
+
+        if ($analysis) {
+            $st = $db->prepare("
+                SELECT pi.txid, pi.vout, pi.amount, pi.source_address,
+                       ps.privacy_score, ps.anonymity_set, a.entity AS ent, a.category AS cat
+                FROM mweb_pegins pi
+                LEFT JOIN pegin_scores ps ON ps.txid = pi.txid AND ps.vout = pi.vout
+                LEFT JOIN address_attribution a ON a.address = pi.source_address
+                WHERE pi.block_height = ? ORDER BY pi.vout");
+        } else {
+            $st = $db->prepare("SELECT txid, vout, amount, source_address FROM mweb_pegins
+                                WHERE block_height = ? ORDER BY vout");
+        }
+        $st->execute([$height]);
+        $pegins = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $pi = ['txid' => $r['txid'], 'vout' => (int) $r['vout'],
+                   'amount_ltc' => $r['amount'] + 0, 'source_address' => $r['source_address']];
+            if ($analysis) {
+                $pi['privacy_score'] = $r['privacy_score'] === null ? null : (int) $r['privacy_score'];
+                $pi['anonymity_set'] = $r['anonymity_set'] === null ? null : (int) $r['anonymity_set'];
+                $pi['source_entity'] = $r['ent'] === null ? null : ['name' => $r['ent'], 'category' => $r['cat']];
+            }
+            $pegins[] = $pi;
+        }
+
+        out([
+            'block' => [
+                'height' => $height,
+                'hash' => $b['block_hash'],
+                'time' => $b['block_time'] === null ? null : (int) $b['block_time'],
+                'supply_ltc' => $b['supply'] === null ? null : $b['supply'] + 0,
+                'mweb_kernels' => $b['mweb_kernels'] === null ? null : (int) $b['mweb_kernels'],
+                'mweb_txos' => $b['mweb_txos'] === null ? null : (int) $b['mweb_txos'],
+            ],
+            'analysis_available' => (bool) $analysis,
+            'pegouts' => $pegouts,
+            'pegins' => $pegins,
+        ]);
 
     default:
         err('unknown endpoint: ' . $endpoint, 404);

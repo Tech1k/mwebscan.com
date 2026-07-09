@@ -150,7 +150,7 @@ function entity_badge($attr)
                             <?php endif; ?>
                         </div>
                         <div class="hop">
-                            <div>MWEB</div>
+                            <div><?php echo mweb_icon(); ?>MWEB</div>
                             <div>-></div>
                             <div style="font-size:0.85em;">private hop</div>
                         </div>
@@ -190,7 +190,7 @@ function entity_badge($attr)
                             <?php endif; ?>
                         </div>
                         <div class="hop">
-                            <div>MWEB</div>
+                            <div><?php echo mweb_icon(); ?>MWEB</div>
                             <div>-></div>
                             <div style="font-size:0.85em;">private hop</div>
                         </div>

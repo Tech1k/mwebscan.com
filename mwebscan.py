@@ -113,9 +113,18 @@ def init_db():
             pegin_count INTEGER,
             pegin_amount REAL,
             pegout_count INTEGER,
-            pegout_amount REAL
+            pegout_amount REAL,
+            mweb_kernels INTEGER,
+            mweb_txos INTEGER
         )
     ''')
+    # Migrate DBs created before the MWEB-metric columns existed (cumulative
+    # kernel-MMR size and current TXO-set size, from the block's mweb header).
+    _cols = {r[1] for r in cursor.execute("PRAGMA table_info(mweb_blocks)")}
+    if 'mweb_kernels' not in _cols:
+        cursor.execute("ALTER TABLE mweb_blocks ADD COLUMN mweb_kernels INTEGER")
+    if 'mweb_txos' not in _cols:
+        cursor.execute("ALTER TABLE mweb_blocks ADD COLUMN mweb_txos INTEGER")
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS scan_progress (
@@ -285,6 +294,33 @@ def fetch_blocks_raw(heights, hashes):
     return result
 
 
+def fetch_mweb(hashes):
+    """Per-block MWEB summary (num_kernels / num_txos) via getblock verbosity 1 --
+    the mweb header fields without the heavy inputs/outputs/kernels arrays that
+    make verbosity 2 fail on MWEB blocks. Needs a full node (RPC); the node-less
+    P2P path can't supply it. Returns {hash: mweb_dict} for blocks that have one."""
+    subs = [hashes[i:i + GETBLOCK_BATCH] for i in range(0, len(hashes), GETBLOCK_BATCH)]
+
+    def fetch_sub(sub):
+        try:
+            res = rpc_batch([('getblock', [h, 1]) for h in sub])
+        except Exception as e:
+            print(f"  getblock v1 (mweb) batch failed ({sub[0]}...): {e}")
+            res = [None] * len(sub)
+        return {h: v['mweb'] for h, v in zip(sub, res)
+                if isinstance(v, dict) and isinstance(v.get('mweb'), dict)}
+
+    out = {}
+    if RPC_WORKERS > 1 and len(subs) > 1:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=RPC_WORKERS) as ex:
+            for part in ex.map(fetch_sub, subs):
+                out.update(part)
+    else:
+        for sub in subs:
+            out.update(fetch_sub(sub))
+    return out
+
+
 def fetch_window(heights, hashes):
     """Return {hash: block} for a window. Uses getblock verbosity 2, then fills
     any block the node couldn't serialize from raw blocks (verbosity 0). If a
@@ -299,6 +335,12 @@ def fetch_window(heights, hashes):
             print("  getblock verbosity 2 unavailable; switching to raw-block parsing")
             RAW_BLOCKS = True
         blocks.update(fetch_blocks_raw([h for h, _ in missing], [bh for _, bh in missing]))
+    # Attach the per-block MWEB summary. getblock 2 already carries 'mweb'; the
+    # raw (verbosity 0) path doesn't, so fetch it cheaply via getblock 1.
+    need_mweb = [bh for _, bh in valid if blocks.get(bh) and 'mweb' not in blocks[bh]]
+    if need_mweb:
+        for bh, summary in fetch_mweb(need_mweb).items():
+            blocks[bh]['mweb'] = summary
     return blocks
 
 
@@ -365,6 +407,7 @@ def parse_block(block):
     height = block['height']
     block_time = block.get('time')
     block_hash = block.get('hash')
+    mweb = block.get('mweb') or {}
 
     pegins = []
     pegouts = []
@@ -405,6 +448,8 @@ def parse_block(block):
         'supply': supply,
         'pegins': pegins,
         'pegouts': pegouts,
+        'mweb_kernels': mweb.get('num_kernels'),
+        'mweb_txos': mweb.get('num_txos'),
     }
 
 
@@ -441,8 +486,9 @@ def persist_block(parsed, sources=None, pegin_input_rows=None):
         cursor.execute('''
             INSERT INTO mweb_blocks
                 (block_height, block_time, block_hash, hogex_txid, supply,
-                 pegin_count, pegin_amount, pegout_count, pegout_amount)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 pegin_count, pegin_amount, pegout_count, pegout_amount,
+                 mweb_kernels, mweb_txos)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(block_height) DO UPDATE SET
                 block_time=excluded.block_time,
                 block_hash=excluded.block_hash,
@@ -451,12 +497,15 @@ def persist_block(parsed, sources=None, pegin_input_rows=None):
                 pegin_count=excluded.pegin_count,
                 pegin_amount=excluded.pegin_amount,
                 pegout_count=excluded.pegout_count,
-                pegout_amount=excluded.pegout_amount
+                pegout_amount=excluded.pegout_amount,
+                mweb_kernels=COALESCE(excluded.mweb_kernels, mweb_blocks.mweb_kernels),
+                mweb_txos=COALESCE(excluded.mweb_txos, mweb_blocks.mweb_txos)
         ''', (
             parsed['height'], parsed['block_time'], parsed['block_hash'],
             parsed['hogex_txid'], parsed['supply'],
             len(parsed['pegins']), pegin_amount,
             len(parsed['pegouts']), pegout_amount,
+            parsed.get('mweb_kernels'), parsed.get('mweb_txos'),
         ))
 
 

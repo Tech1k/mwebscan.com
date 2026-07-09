@@ -137,7 +137,7 @@ try {
             <div class="stats">
                 <div class="stat">
                     <div class="v"><?php echo is_numeric($mwebTotalValue) ? number_format((float) $mwebTotalValue, 2) : htmlspecialchars($mwebTotalValue, ENT_QUOTES); ?></div>
-                    <div class="l">MWEB supply (<?php echo mwebscan_unit(); ?>)</div>
+                    <div class="l"><?php echo mweb_icon(); ?>MWEB supply (<?php echo mwebscan_unit(); ?>)</div>
                 </div>
                 <div class="stat">
                     <div class="v"><?php echo number_format($peginCount); ?></div>

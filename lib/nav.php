@@ -1,6 +1,7 @@
 <?php
 // Shared top navigation, included by every page after <body>.
 require_once __DIR__ . '/network.php';
+require_once __DIR__ . '/icons.php';
 $_nav = [
     '/' => 'Home',
     '/trace' => 'Trace',

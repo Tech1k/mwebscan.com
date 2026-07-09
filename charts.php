@@ -6,7 +6,8 @@ $db = mwebscan_db();
 $series = mwebscan_cached($db, 'timeseries_daily',
     "SELECT CAST(block_time/86400 AS INT) AS day, MAX(block_height) AS height, AVG(supply) AS supply,
             SUM(pegin_amount) AS pegin, SUM(pegout_amount) AS pegout,
-            SUM(pegin_count) AS pegins, SUM(pegout_count) AS pegouts
+            SUM(pegin_count) AS pegins, SUM(pegout_count) AS pegouts,
+            MAX(mweb_txos) AS utxos, MAX(mweb_kernels) AS kernels
      FROM mweb_blocks WHERE block_time IS NOT NULL GROUP BY day ORDER BY day");
 
 $dates   = array_map(fn($r) => date('M j, Y', (int)$r['day'] * 86400), $series);
@@ -14,6 +15,18 @@ $supply  = array_map(fn($r) => (float)($r['supply'] ?? 0), $series);
 $netflow = array_map(fn($r) => (float)($r['pegin'] ?? 0) - (float)($r['pegout'] ?? 0), $series);
 $pegins  = array_map(fn($r) => (int)($r['pegins'] ?? 0), $series);
 $pegouts = array_map(fn($r) => (int)($r['pegouts'] ?? 0), $series);
+
+// MWEB internal activity (needs a full node, so may be absent on node-less
+// deploys, and is ~zero on testnet). num_txos = current MWEB UTXO-set size;
+// num_kernels is the cumulative kernel-MMR size, so per-day activity is its
+// day-over-day delta. Charts using these auto-hide when there's no data.
+$utxos      = array_map(fn($r) => (int)($r['utxos'] ?? 0), $series);
+$kernelsCum = array_map(fn($r) => (int)($r['kernels'] ?? 0), $series);
+$kernelsDaily = [];
+$prevK = null;
+foreach ($kernelsCum as $k) { $kernelsDaily[] = ($prevK === null ? 0 : max(0, $k - $prevK)); $prevK = $k; }
+$hasUtxos   = (bool) array_filter($series, fn($r) => ($r['utxos'] ?? null) !== null);
+$hasKernels = ($kernelsCum && max($kernelsCum) > 0);
 
 /**
  * Render a dependency-free SVG line chart inside a titled card. Per-point
@@ -166,12 +179,24 @@ $totPegouts    = array_sum($pegouts);
                     <div class="csum"><div class="v"><?php echo number_format($totPeginAmt, 0); ?></div><div class="l">Total Pegged In (<?php echo mwebscan_unit(); ?>)</div></div>
                     <div class="csum"><div class="v"><?php echo number_format($totPegoutAmt, 0); ?></div><div class="l">Total Pegged Out (<?php echo mwebscan_unit(); ?>)</div></div>
                     <div class="csum"><div class="v"><?php echo number_format($totPegins); ?> / <?php echo number_format($totPegouts); ?></div><div class="l">Peg-ins / Peg-outs</div></div>
+                    <?php if ($hasUtxos): ?>
+                    <div class="csum"><div class="v"><?php echo number_format(end($utxos)); ?></div><div class="l"><?php echo mweb_icon(); ?>MWEB UTXO Set</div></div>
+                    <?php endif; ?>
+                    <?php if ($hasKernels): ?>
+                    <div class="csum"><div class="v"><?php echo number_format(end($kernelsCum)); ?></div><div class="l"><?php echo mweb_icon(); ?>MWEB Kernels (total)</div></div>
+                    <?php endif; ?>
                 </div>
 
                 <?php echo render_chart('MWEB Supply', $supply, $dates, 'blue', mwebscan_unit(), 0, true); ?>
                 <?php echo render_chart('Daily Net Flow (peg-in minus peg-out)', $netflow, $dates, 'green', mwebscan_unit(), 1); ?>
                 <?php echo render_chart('Daily Peg-in Count', $pegins, $dates, 'blue', 'peg-ins', 0); ?>
                 <?php echo render_chart('Daily Peg-out Count', $pegouts, $dates, 'orange', 'peg-outs', 0); ?>
+                <?php if ($hasUtxos): ?>
+                <?php echo render_chart('MWEB UTXO Set Size (unspent confidential outputs)', $utxos, $dates, 'blue', 'TXOs', 0, true); ?>
+                <?php endif; ?>
+                <?php if ($hasKernels): ?>
+                <?php echo render_chart('MWEB Transactions per Day (kernels: activity that never touches the public chain)', $kernelsDaily, $dates, 'green', 'kernels', 0); ?>
+                <?php endif; ?>
 
                 <p style="text-align:center; color:var(--muted); font-size:0.85em; margin:8px 0 20px;">
                     <?php echo count($series); ?> days of data. Larger daily peg counts mean larger anonymity sets.
