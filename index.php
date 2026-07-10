@@ -47,12 +47,12 @@ $netFlow = $peginTotal - $pegoutTotal;
 // separately guarded so a pre-migration DB can't break the headline stats.
 $mwebTxos = $mwebKernels = null;
 try {
-    $mrow = $db->query("SELECT mweb_txos, mweb_kernels FROM mweb_blocks
-                        WHERE mweb_txos IS NOT NULL ORDER BY block_height DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-    if ($mrow) {
-        $mwebTxos = $mrow['mweb_txos'] !== null ? (int) $mrow['mweb_txos'] : null;
-        $mwebKernels = $mrow['mweb_kernels'] !== null ? (int) $mrow['mweb_kernels'] : null;
-    }
+    // Current UTXO set = latest block's (cumulative) mweb_txos.
+    $t = $db->query("SELECT mweb_txos FROM mweb_blocks WHERE mweb_txos IS NOT NULL ORDER BY block_height DESC LIMIT 1")->fetchColumn();
+    $mwebTxos = $t === false ? null : (int) $t;
+    // Total MWEB transactions = SUM of the per-block kernel counts.
+    $k = $db->query("SELECT SUM(mweb_kernels) FROM mweb_blocks")->fetchColumn();
+    $mwebKernels = ($k === null || $k === false) ? null : (int) $k;
 } catch (Exception $e) {
     // MWEB-metric columns not present yet; tiles stay hidden.
 }

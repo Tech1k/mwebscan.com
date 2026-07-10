@@ -120,11 +120,14 @@ def init_db():
     ''')
     # Migrate DBs created before the MWEB-metric columns existed (cumulative
     # kernel-MMR size and current TXO-set size, from the block's mweb header).
-    _cols = {r[1] for r in cursor.execute("PRAGMA table_info(mweb_blocks)")}
-    if 'mweb_kernels' not in _cols:
-        cursor.execute("ALTER TABLE mweb_blocks ADD COLUMN mweb_kernels INTEGER")
-    if 'mweb_txos' not in _cols:
-        cursor.execute("ALTER TABLE mweb_blocks ADD COLUMN mweb_txos INTEGER")
+    # Race-safe: if another process (e.g. the analysis pass) added the column
+    # first, ignore the duplicate rather than crashing.
+    for _col in ('mweb_kernels', 'mweb_txos'):
+        try:
+            cursor.execute("ALTER TABLE mweb_blocks ADD COLUMN %s INTEGER" % _col)
+        except sqlite3.OperationalError as _e:
+            if 'duplicate column' not in str(_e).lower():
+                raise
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS scan_progress (

@@ -592,7 +592,7 @@ def compute_cache(cur):
         'pegin_dist_exact': "SELECT amount, COUNT(*) AS count FROM mweb_pegins GROUP BY amount ORDER BY count DESC, amount DESC LIMIT 2000",
         'pegout_dist_rounded': "SELECT ROUND(amount,1) AS amount, COUNT(*) AS count FROM mweb_pegouts GROUP BY ROUND(amount,1) ORDER BY count DESC, amount ASC",
         'top_pegout_addresses': "SELECT address, COUNT(*) AS count, SUM(amount) AS total FROM mweb_pegouts WHERE address IS NOT NULL GROUP BY address HAVING count > 1 ORDER BY count DESC, total DESC LIMIT 500",
-        'timeseries_daily': "SELECT CAST(block_time/86400 AS INT) AS day, MAX(block_height) AS height, AVG(supply) AS supply, SUM(pegin_amount) AS pegin, SUM(pegout_amount) AS pegout, SUM(pegin_count) AS pegins, SUM(pegout_count) AS pegouts, MAX(mweb_txos) AS utxos, MAX(mweb_kernels) AS kernels FROM mweb_blocks WHERE block_time IS NOT NULL GROUP BY day ORDER BY day",
+        'timeseries_daily': "SELECT CAST(block_time/86400 AS INT) AS day, MAX(block_height) AS height, AVG(supply) AS supply, SUM(pegin_amount) AS pegin, SUM(pegout_amount) AS pegout, SUM(pegin_count) AS pegins, SUM(pegout_count) AS pegouts, MAX(mweb_txos) AS utxos, SUM(mweb_kernels) AS kernels FROM mweb_blocks WHERE block_time IS NOT NULL GROUP BY day ORDER BY day",
     }
     now = int(time.time())
     for key, sql in queries.items():
@@ -699,11 +699,13 @@ def main():
     # scanner hasn't migrated the DB yet (e.g. the analysis timer fires before
     # the scanner restart), add the columns here so the queries don't fail.
     if cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='mweb_blocks'").fetchone():
-        _mcols = {r[1] for r in cur.execute("PRAGMA table_info(mweb_blocks)")}
-        if 'mweb_kernels' not in _mcols:
-            cur.execute("ALTER TABLE mweb_blocks ADD COLUMN mweb_kernels INTEGER")
-        if 'mweb_txos' not in _mcols:
-            cur.execute("ALTER TABLE mweb_blocks ADD COLUMN mweb_txos INTEGER")
+        # Race-safe: ignore a duplicate if the scanner added the column first.
+        for _col in ('mweb_kernels', 'mweb_txos'):
+            try:
+                cur.execute("ALTER TABLE mweb_blocks ADD COLUMN %s INTEGER" % _col)
+            except sqlite3.OperationalError as _e:
+                if 'duplicate column' not in str(_e).lower():
+                    raise
         conn.commit()
 
     # Attribution first, so links can be tagged with destination entities.

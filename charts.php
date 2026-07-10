@@ -7,7 +7,7 @@ $series = mwebscan_cached($db, 'timeseries_daily',
     "SELECT CAST(block_time/86400 AS INT) AS day, MAX(block_height) AS height, AVG(supply) AS supply,
             SUM(pegin_amount) AS pegin, SUM(pegout_amount) AS pegout,
             SUM(pegin_count) AS pegins, SUM(pegout_count) AS pegouts,
-            MAX(mweb_txos) AS utxos, MAX(mweb_kernels) AS kernels
+            MAX(mweb_txos) AS utxos, SUM(mweb_kernels) AS kernels
      FROM mweb_blocks WHERE block_time IS NOT NULL GROUP BY day ORDER BY day");
 
 $dates   = array_map(fn($r) => date('M j, Y', (int)$r['day'] * 86400), $series);
@@ -17,16 +17,14 @@ $pegins  = array_map(fn($r) => (int)($r['pegins'] ?? 0), $series);
 $pegouts = array_map(fn($r) => (int)($r['pegouts'] ?? 0), $series);
 
 // MWEB internal activity (needs a full node, so may be absent on node-less
-// deploys, and is ~zero on testnet). num_txos = current MWEB UTXO-set size;
-// num_kernels is the cumulative kernel-MMR size, so per-day activity is its
-// day-over-day delta. Charts using these auto-hide when there's no data.
-$utxos      = array_map(fn($r) => (int)($r['utxos'] ?? 0), $series);
-$kernelsCum = array_map(fn($r) => (int)($r['kernels'] ?? 0), $series);
-$kernelsDaily = [];
-$prevK = null;
-foreach ($kernelsCum as $k) { $kernelsDaily[] = ($prevK === null ? 0 : max(0, $k - $prevK)); $prevK = $k; }
-$hasUtxos   = (bool) array_filter($series, fn($r) => ($r['utxos'] ?? null) !== null);
-$hasKernels = ($kernelsCum && max($kernelsCum) > 0);
+// deploys). num_txos = current MWEB UTXO-set size (cumulative, so the latest
+// value is "now"); num_kernels is the per-block kernel count (~one per MWEB tx),
+// which the query SUMs per day. Charts auto-hide when there's no data.
+$utxos        = array_map(fn($r) => (int)($r['utxos'] ?? 0), $series);
+$kernelsDaily = array_map(fn($r) => (int)($r['kernels'] ?? 0), $series);
+$kernelsTotal = array_sum($kernelsDaily);
+$hasUtxos     = (bool) array_filter($series, fn($r) => ($r['utxos'] ?? null) !== null);
+$hasKernels   = $kernelsTotal > 0;
 
 /**
  * Render a dependency-free SVG line chart inside a titled card. Per-point
@@ -183,7 +181,7 @@ $totPegouts    = array_sum($pegouts);
                     <div class="csum"><div class="v"><?php echo number_format(end($utxos)); ?></div><div class="l"><?php echo mweb_icon(); ?>MWEB UTXO Set</div></div>
                     <?php endif; ?>
                     <?php if ($hasKernels): ?>
-                    <div class="csum"><div class="v"><?php echo number_format(end($kernelsCum)); ?></div><div class="l"><?php echo mweb_icon(); ?>MWEB Kernels (total)</div></div>
+                    <div class="csum"><div class="v"><?php echo number_format($kernelsTotal); ?></div><div class="l"><?php echo mweb_icon(); ?>MWEB Kernels (total)</div></div>
                     <?php endif; ?>
                 </div>
 
