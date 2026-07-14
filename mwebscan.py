@@ -71,6 +71,13 @@ conn.execute(f"PRAGMA cache_size = {-SQLITE_CACHE_MIB * 1024};")
 conn.execute(f"PRAGMA mmap_size = {SQLITE_MMAP_MIB * 1024 * 1024};")
 conn.execute("PRAGMA temp_store = MEMORY;")
 conn.execute("PRAGMA wal_autocheckpoint = 20000;")
+# Backstop against a runaway WAL: without this, a passive autocheckpoint resets
+# the WAL in place but never shrinks the file, so a one-off pin (a stuck txn, a
+# huge analysis transaction, a slow reader) leaves the on-disk WAL permanently
+# large -- how the 5.5 GB file persisted after growth stopped. This truncates
+# the WAL back to the cap after each checkpoint, well above the ~78 MB
+# autocheckpoint threshold so it does not fight normal operation.
+conn.execute("PRAGMA journal_size_limit = 268435456;")   # 256 MiB
 
 
 def init_db():
@@ -640,6 +647,17 @@ def poll_for_blocks(interval=POLL_INTERVAL):
             scan_blocks()
         except Exception as e:
             print(f"Polling error: {e}")
+            # Roll back any half-finished write first. A commit that failed on a
+            # transient lock (e.g. the analysis pass holding the writer past the
+            # busy_timeout) otherwise leaves the shared connection mid-
+            # transaction, which pins the WAL open (it grows without bound) and
+            # wedges the scanner -- the same failure fixed in mwebp2p.py. The
+            # idempotent INSERT OR IGNORE / upsert writes are re-applied next
+            # poll, since the cursor only advanced over committed windows.
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             time.sleep(5)
 
 

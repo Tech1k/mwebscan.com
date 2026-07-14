@@ -181,15 +181,21 @@ def init_tables(cur):
     cur.execute('CREATE INDEX IF NOT EXISTS idx_attr_entity ON address_attribution(entity)')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_pegin_scores_privacy ON pegin_scores(privacy_score)')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_pegout_scores_risk ON pegout_scores(risk_score)')
-    # Wipe derived data for a full recompute.
-    cur.execute('DELETE FROM mweb_links')
-    cur.execute('DELETE FROM address_reuse_links')
-    cur.execute('DELETE FROM address_attribution')
-    cur.execute('DELETE FROM entity_flows')
-    cur.execute('DELETE FROM pegin_scores')
-    cur.execute('DELETE FROM pegout_scores')
-    cur.execute('DELETE FROM analysis_stats')
-    cur.execute('DELETE FROM cache')
+
+
+# Derived tables the analysis fully rebuilds each pass. Wiped at the START of the
+# atomic recompute transaction (see main), NOT inside init_tables -- so the wipe
+# is never committed separately from the repopulate, and readers never see an
+# empty table mid-pass.
+DERIVED_TABLES = (
+    'mweb_links', 'address_reuse_links', 'address_attribution', 'entity_flows',
+    'pegin_scores', 'pegout_scores', 'analysis_stats', 'cache',
+)
+
+
+def wipe_derived_tables(cur):
+    for table in DERIVED_TABLES:
+        cur.execute('DELETE FROM ' + table)
 
 
 def load_pegins(cur):
@@ -699,12 +705,17 @@ def main():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     conn.execute('PRAGMA journal_mode = WAL;')
-    conn.execute('PRAGMA busy_timeout = 10000;')
+    # Match the scanner's 60s so a pass doesn't lose every race to it and die
+    # mid-recompute with the derived tables already wiped. Same WAL backstop as
+    # the scanner so a large recompute transaction can't leave the file bloated.
+    conn.execute('PRAGMA busy_timeout = 60000;')
+    conn.execute('PRAGMA journal_size_limit = 268435456;')   # 256 MiB
 
     # Observed refresh cadence: read the previous pass's write time before
-    # init_tables wipes the cache. cache.updated is set to "now" on every pass,
-    # so the gap to this pass is the real interval between analysis runs -- the
-    # homepage shows this instead of a hardcoded guess, whatever the timer is.
+    # wipe_derived_tables() clears the cache in the recompute below. cache.updated
+    # is set to "now" on every pass, so the gap to this pass is the real interval
+    # between analysis runs -- the homepage shows this instead of a hardcoded
+    # guess, whatever the timer is.
     prev_updated = None
     if cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='cache'").fetchone():
         prev_updated = cur.execute("SELECT MAX(updated) FROM cache").fetchone()[0]
@@ -724,37 +735,55 @@ def main():
                     raise
         conn.commit()
 
-    # Attribution first, so links can be tagged with destination entities.
-    labels = load_labels(cur)
-    clusters = compute_clusters(cur)
-    attribution = build_attribution(cur, labels, clusters)
-    print(f"Loaded {len(labels)} label(s); built {len(set(clusters.values()))} cluster(s) "
-          f"over {len(clusters)} address(es).")
+    # ---- Atomic recompute --------------------------------------------------
+    # Everything from the wipe to the single commit runs in ONE write
+    # transaction: readers keep seeing the previous snapshot until commit (never
+    # an empty or half-updated table), and any failure rolls back to the old data
+    # instead of blanking the site. All DDL (init_tables + the column migration)
+    # is already committed above, so nothing implicitly commits the wipe
+    # mid-transaction. The DB-mediated reads (compute_scores / _recommendations /
+    # _stats reading mweb_links etc.) still see the fresh rows, because a
+    # connection sees its own uncommitted writes within the same transaction.
+    try:
+        wipe_derived_tables(cur)
 
-    pin_amts, pin_recs = load_pegins(cur)
-    pout_amts = load_pegout_litoshis(cur)
-    print(f"Loaded {len(pin_recs)} peg-ins, {len(pout_amts)} peg-outs.")
+        # Attribution first, so links can be tagged with destination entities.
+        labels = load_labels(cur)
+        clusters = compute_clusters(cur)
+        attribution = build_attribution(cur, labels, clusters)
+        print(f"Loaded {len(labels)} label(s); built {len(set(clusters.values()))} cluster(s) "
+              f"over {len(clusters)} address(es).")
 
-    link_count = compute_round_trip_links(cur, pin_amts, pin_recs, pout_amts, attribution)
-    print(f"Reported {link_count} round-trip link(s).")
+        pin_amts, pin_recs = load_pegins(cur)
+        pout_amts = load_pegout_litoshis(cur)
+        print(f"Loaded {len(pin_recs)} peg-ins, {len(pout_amts)} peg-outs.")
 
-    reuse_count = compute_address_reuse(cur)
-    print(f"Found {reuse_count} address-reuse link(s).")
+        link_count = compute_round_trip_links(cur, pin_amts, pin_recs, pout_amts, attribution)
+        print(f"Reported {link_count} round-trip link(s).")
 
-    flow_count = compute_entity_flows(cur, attribution)
-    print(f"Aggregated {flow_count} entity-flow row(s).")
+        reuse_count = compute_address_reuse(cur)
+        print(f"Found {reuse_count} address-reuse link(s).")
 
-    pin_scored, pout_scored = compute_scores(cur, attribution)
-    print(f"Scored {pin_scored} peg-in(s) and {pout_scored} peg-out(s).")
+        flow_count = compute_entity_flows(cur, attribution)
+        print(f"Aggregated {flow_count} entity-flow row(s).")
 
-    cache_count = compute_cache(cur)
-    print(f"Cached {cache_count} homepage aggregate(s).")
+        pin_scored, pout_scored = compute_scores(cur, attribution)
+        print(f"Scored {pin_scored} peg-in(s) and {pout_scored} peg-out(s).")
 
-    rec = compute_recommendations(cur)
-    print(f"Built recommendations ({len(rec['best_pegin_amounts'])} suggested amounts).")
+        cache_count = compute_cache(cur)
+        print(f"Cached {cache_count} homepage aggregate(s).")
 
-    stats = compute_stats(cur, link_count, reuse_count, prev_updated)
-    conn.commit()
+        rec = compute_recommendations(cur)
+        print(f"Built recommendations ({len(rec['best_pegin_amounts'])} suggested amounts).")
+
+        stats = compute_stats(cur, link_count, reuse_count, prev_updated)
+        conn.commit()
+    except Exception:
+        # Abandon the half-built recompute; the previous snapshot stays intact
+        # and the timer retries next pass. Releases the writer lock immediately.
+        conn.rollback()
+        conn.close()
+        raise
     conn.close()
 
     print("Analysis complete:")

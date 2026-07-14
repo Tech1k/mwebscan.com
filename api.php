@@ -50,7 +50,7 @@ function err($message, $code = 400)
     out(['error' => $message], $code);
 }
 
-function rate_limit($db, $limit, $window = 60)
+function rate_limit($limit, $window = 60)
 {
     // Store a salted hash of the IP, never the raw address, and keep only the
     // current + previous window (rows expire within ~2 minutes).
@@ -74,20 +74,36 @@ function rate_limit($db, $limit, $window = 60)
     $now = time();
     $bucket = (int) ($now / $window);
     try {
-        $db->exec("CREATE TABLE IF NOT EXISTS api_rate (ip TEXT, bucket INTEGER, count INTEGER, PRIMARY KEY(ip, bucket))");
-        $st = $db->prepare("INSERT INTO api_rate (ip, bucket, count) VALUES (?, ?, 1)
+        // Dedicated SQLite file, NOT the shared analytics DB: this write runs on
+        // every request, so contending it with the analytics writer lock (a long
+        // analysis pass holds it for tens of seconds) would stall every request
+        // and saturate the PHP-FPM pool. Its own file has only the limiter as a
+        // writer, so the lock is never held long. Sits next to the main DB and
+        // keeps the .db suffix, so .htaccess still blocks it from the web.
+        $mainPath = mwebscan_db_path();
+        $ratePath = substr($mainPath, -3) === '.db'
+            ? substr($mainPath, 0, -3) . '-rate.db'
+            : $mainPath . '-rate.db';
+        $rdb = new PDO('sqlite:' . $ratePath);
+        $rdb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        // Set the busy timeout before the WAL conversion so even the first
+        // request's journal_mode switch waits on contention rather than racing.
+        $rdb->exec('PRAGMA busy_timeout = 3000');
+        $rdb->exec('PRAGMA journal_mode = WAL');
+        $rdb->exec("CREATE TABLE IF NOT EXISTS api_rate (ip TEXT, bucket INTEGER, count INTEGER, PRIMARY KEY(ip, bucket))");
+        $st = $rdb->prepare("INSERT INTO api_rate (ip, bucket, count) VALUES (?, ?, 1)
                             ON CONFLICT(ip, bucket) DO UPDATE SET count = count + 1");
         $st->execute([$ip, $bucket]);
         // Sliding-window counter: current bucket plus the decaying tail of the
         // previous one, so a client cannot burst 2x across a window boundary.
-        $st = $db->prepare("SELECT bucket, count FROM api_rate WHERE ip = ? AND bucket IN (?, ?)");
+        $st = $rdb->prepare("SELECT bucket, count FROM api_rate WHERE ip = ? AND bucket IN (?, ?)");
         $st->execute([$ip, $bucket, $bucket - 1]);
         $cur = $prev = 0;
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
             if ((int) $r['bucket'] === $bucket) { $cur = (int) $r['count']; }
             else { $prev = (int) $r['count']; }
         }
-        $db->prepare("DELETE FROM api_rate WHERE bucket < ?")->execute([$bucket - 2]);
+        $rdb->prepare("DELETE FROM api_rate WHERE bucket < ?")->execute([$bucket - 2]);
         $estimated = $cur + $prev * (($window - ($now % $window)) / $window);
         if ($estimated > $limit) {
             header('Retry-After: ' . $window);
@@ -168,7 +184,7 @@ if ($REQUIRED_KEY !== '') {
 }
 
 if ($RATE_LIMIT > 0 && !in_array($_SERVER['REMOTE_ADDR'] ?? '', $RATE_ALLOW_IPS, true)) {
-    rate_limit($db, $RATE_LIMIT);
+    rate_limit($RATE_LIMIT);
 }
 
 $endpoint = $_GET['endpoint'] ?? 'index';
