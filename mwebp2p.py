@@ -175,6 +175,17 @@ def run(loop=True):
             return
         except Exception as e:                       # noqa: BLE001 - keep daemon alive
             print(f"[retry] {type(e).__name__}: {e}; reconnecting in {RETRY_SECONDS}s")
+            # Roll back any half-finished write first. If a commit failed on a
+            # transient lock (e.g. the analysis pass holding the writer), the
+            # shared connection is left mid-transaction; leaving it open pins
+            # the WAL (it grows without bound) and wedges the scanner for good.
+            # Rollback frees the lock and lets the WAL checkpoint; the dropped
+            # blocks are re-streamed next pass, since writes are idempotent and
+            # the cursor only advanced over committed blocks.
+            try:
+                mwebscan.conn.rollback()
+            except Exception:                        # noqa: BLE001
+                pass
             try:
                 electrum.close()
                 electrum.connect()

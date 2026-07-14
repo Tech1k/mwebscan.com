@@ -59,8 +59,12 @@ conn.execute("PRAGMA journal_mode = WAL;")
 # NORMAL is crash-safe under WAL and nearly as fast as OFF, which risks
 # corruption on power loss for a long-running daemon.
 conn.execute("PRAGMA synchronous = NORMAL;")
-# Wait instead of failing if another process holds the write lock.
-conn.execute("PRAGMA busy_timeout = 5000;")
+# Wait instead of failing if another process holds the write lock. The
+# analysis pass (mwebanalysis.py) recomputes the whole dataset inside one
+# write transaction and can hold the lock for tens of seconds, so a short
+# timeout guarantees the scanner collides with it; 60s rides out a normal
+# pass. The retry loop still rolls back on the rare overrun (see mwebp2p.py).
+conn.execute("PRAGMA busy_timeout = 60000;")
 # Page cache + mmap sized per host; in-memory temp; large WAL checkpoint
 # interval to avoid stalls during bulk sync.
 conn.execute(f"PRAGMA cache_size = {-SQLITE_CACHE_MIB * 1024};")
