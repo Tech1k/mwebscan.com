@@ -71,6 +71,9 @@ ErrorDocument 403 /403.php
     RewriteRule ^api/([a-z_]+)/?$ api.php?endpoint=$1 [QSA,L]
     RewriteRule ^api/?$ api.php [QSA,L]
 
+    # Block: /block/<height|hash> -> block.php (per-block MWEB analysis view).
+    RewriteRule ^block/([0-9a-fA-F]{64}|[0-9]+)/?$ block.php?q=$1 [QSA,L]
+
     # Serve /page.php when /page is requested.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

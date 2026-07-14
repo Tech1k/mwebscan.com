@@ -650,7 +650,7 @@ def compute_recommendations(cur):
     return recommendations
 
 
-def compute_stats(cur, link_count, reuse_count):
+def compute_stats(cur, link_count, reuse_count, prev_updated=None):
     def scalar(sql):
         return cur.execute(sql).fetchone()[0] or 0
 
@@ -682,6 +682,14 @@ def compute_stats(cur, link_count, reuse_count):
             f'SELECT COUNT(*) FROM pegout_scores WHERE risk_score >= {RISK_HIGH_THRESHOLD}'),
         'avg_pegout_risk': round(scalar('SELECT AVG(risk_score) FROM pegout_scores'), 1),
     }
+    # Observed seconds between analysis passes, for the homepage cadence note.
+    # Guard to a plausible band so first-run (prev_updated None) and ad-hoc
+    # reruns close together don't skew the displayed interval; steady-state
+    # timer runs settle to the real cadence.
+    if prev_updated:
+        interval = int(time.time()) - int(prev_updated)
+        if 120 <= interval <= 21600:
+            stats['refresh_sec'] = interval
     cur.executemany('INSERT OR REPLACE INTO analysis_stats (key, value) VALUES (?, ?)',
                     list(stats.items()))
     return stats
@@ -692,6 +700,14 @@ def main():
     cur = conn.cursor()
     conn.execute('PRAGMA journal_mode = WAL;')
     conn.execute('PRAGMA busy_timeout = 10000;')
+
+    # Observed refresh cadence: read the previous pass's write time before
+    # init_tables wipes the cache. cache.updated is set to "now" on every pass,
+    # so the gap to this pass is the real interval between analysis runs -- the
+    # homepage shows this instead of a hardcoded guess, whatever the timer is.
+    prev_updated = None
+    if cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='cache'").fetchone():
+        prev_updated = cur.execute("SELECT MAX(updated) FROM cache").fetchone()[0]
 
     init_tables(cur)
 
@@ -737,7 +753,7 @@ def main():
     rec = compute_recommendations(cur)
     print(f"Built recommendations ({len(rec['best_pegin_amounts'])} suggested amounts).")
 
-    stats = compute_stats(cur, link_count, reuse_count)
+    stats = compute_stats(cur, link_count, reuse_count, prev_updated)
     conn.commit()
     conn.close()
 

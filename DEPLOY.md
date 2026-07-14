@@ -23,6 +23,103 @@ The shipped units (`mwebscan.service`, `mwebp2p.service`, `mwebanalysis.service`
 
 Run exactly one block source: `mwebscan.service` or `mwebp2p.service`, never both (they share the scan cursor). The `mwebanalysis.timer` runs the analysis pass every 15 minutes; run `mwebmonitor.py check` after each pass if you use watchlists.
 
+## Pruned node + RPC scanner (for the MWEB kernel/UTXO metrics)
+
+The MWEB kernel/UTXO metrics come from a full node's `getblock <hash> 1` (`mweb` field). The node-less `mwebp2p` path is served stripped blocks and cannot supply them, so those columns stay NULL and the metric charts/tiles auto-hide. A **pruned** node is enough: it serves recent blocks, and you seed history from an existing DB. This is the setup for running a dedicated mainnet node next to a testnet node on one host.
+
+### 1. Pruned litecoind (own datadir + conf)
+
+Give the mainnet node its **own datadir** so it can't inherit a testnet conf. (A global `testnet=1` silently sends it to `testnet4` and collides with the testnet node's lock. Section names are `[main]`/`[test]`, not `[mainnet]`.)
+
+`/home/ubuntu/.litecoin-mainnet/litecoin.conf`:
+```
+server=1
+prune=2000          # ~2 GB of recent blocks (weeks of headroom)
+dbcache=300         # cap RAM: two nodes on one box is tight (raise if you have room)
+maxmempool=100
+maxconnections=16
+rpcuser=litecoinrpc
+rpcpassword=litecoinrpcpass
+rpcbind=127.0.0.1
+rpcallowip=127.0.0.1
+```
+No `testnet=1`, no `daemon=1` (systemd runs it foreground), no `zmq` (clashes with the testnet node's port). Own the datadir with the service user: `sudo chown -R ubuntu:ubuntu /home/ubuntu/.litecoin-mainnet`.
+
+`/etc/systemd/system/litecoin-mainnet.service`:
+```ini
+[Unit]
+Description=Litecoin daemon (mainnet, pruned)
+After=network-online.target
+Wants=network-online.target
+[Service]
+User=ubuntu
+Type=simple
+ExecStart=/home/ubuntu/litecoin/litecoind -datadir=/home/ubuntu/.litecoin-mainnet -printtoconsole
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=300
+[Install]
+WantedBy=multi-user.target
+```
+It does one full IBD (downloads the whole chain once, prunes to ~2 GB retained), then stays small. A pruned node cannot serve old blocks, so seed the DB before running the scanner.
+
+### 2. Seed the DB, then run the scanner
+
+Copy a complete `mwebscan.db` in first (the pruned node has no history to sync from); the scanner then only ever fetches new blocks it does have:
+```bash
+rsync -avP mwebscan.db user@host:/var/www/mwebscan.com/mwebscan.db
+sudo chown www-data:www-data /var/www/mwebscan.com/mwebscan.db
+```
+
+`/etc/systemd/system/mwebscan-mainnet.service`:
+```ini
+[Unit]
+Description=MWEBscan mainnet scanner
+After=network-online.target litecoin-mainnet.service
+Wants=litecoin-mainnet.service
+[Service]
+User=www-data
+WorkingDirectory=/var/www/mwebscan.com
+Environment=LTC_RPC_URL=http://127.0.0.1:9332/
+Environment=LTC_RPC_USER=litecoinrpc
+Environment=LTC_RPC_PASSWORD=litecoinrpcpass
+ExecStart=/usr/bin/python3 /var/www/mwebscan.com/mwebscan.py
+Restart=on-failure
+RestartSec=30
+[Install]
+WantedBy=multi-user.target
+```
+
+`/etc/systemd/system/mwebscan-analysis-mainnet.service` and `.timer`:
+```ini
+[Unit]
+Description=MWEBscan mainnet analysis pass
+[Service]
+Type=oneshot
+User=www-data
+WorkingDirectory=/var/www/mwebscan.com
+ExecStart=/usr/bin/python3 /var/www/mwebscan.com/mwebanalysis.py
+```
+```ini
+[Unit]
+Description=Run MWEBscan mainnet analysis every 5 min
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target
+```
+
+Enable:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now litecoin-mainnet mwebscan-mainnet mwebscan-analysis-mainnet.timer
+```
+
+### Node-less alternative
+
+Don't need the kernel/UTXO metrics? Skip the node: run `mwebp2p.py` (P2P + Electrum). Everything works except those two metrics (their charts/tiles auto-hide). The `/api/block` analysis overlay is unaffected either way, since it is analysis-derived, not node-derived.
+
 ## Secrets
 
 - RPC credentials come from `LTC_RPC_URL` / `LTC_RPC_USER` / `LTC_RPC_PASSWORD`. Never commit real credentials.

@@ -409,12 +409,12 @@ switch ($endpoint) {
             $po = ['txid' => $r['txid'], 'vout' => (int) $r['vout'],
                    'amount_ltc' => $r['amount'] + 0, 'address' => $r['address']];
             if ($analysis) {
-                $po['linked_pegin'] = $r['pegin_txid'] === null ? null
-                    : ['txid' => $r['pegin_txid'],
-                       'height' => $r['pegin_height'] === null ? null : (int) $r['pegin_height']];
+                $po['linked_pegin'] = $r['pegin_txid'];   // peg-in txid string, or null
+                $po['linked_pegin_height'] = $r['pegin_height'] === null ? null : (int) $r['pegin_height'];
                 $po['confidence'] = $r['confidence'] === null ? null : $r['confidence'] + 0;
                 $po['aml_risk'] = $r['risk_score'] === null ? null : (int) $r['risk_score'];
-                $po['entity'] = $r['ent'] === null ? null : ['name' => $r['ent'], 'category' => $r['cat']];
+                $po['entity'] = $r['ent'];        // string name, or null (matches /api/links)
+                $po['category'] = $r['cat'];      // string, or null
                 $po['reasons'] = $r['reasons'] === null ? null : json_decode($r['reasons'], true);
             }
             $pegouts[] = $po;
@@ -440,7 +440,8 @@ switch ($endpoint) {
             if ($analysis) {
                 $pi['privacy_score'] = $r['privacy_score'] === null ? null : (int) $r['privacy_score'];
                 $pi['anonymity_set'] = $r['anonymity_set'] === null ? null : (int) $r['anonymity_set'];
-                $pi['source_entity'] = $r['ent'] === null ? null : ['name' => $r['ent'], 'category' => $r['cat']];
+                $pi['source_entity'] = $r['ent'];         // string name, or null
+                $pi['source_category'] = $r['cat'];       // string, or null
             }
             $pegins[] = $pi;
         }

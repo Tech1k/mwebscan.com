@@ -208,7 +208,7 @@ try {
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
-            <p style="color:var(--muted); font-size:0.82em;">Supply as of block <?php echo is_numeric($syncHeightValue) ? number_format((int) $syncHeightValue) : htmlspecialchars($syncHeightValue, ENT_QUOTES); ?>.<?php if ($analysisUpdated): ?> Analysis updated <?php $age = max(0, time() - $analysisUpdated); echo $age < 3600 ? max(1, round($age / 60)) . 'm' : round($age / 3600) . 'h'; ?> ago.<?php endif; ?></p>
+            <p style="color:var(--muted); font-size:0.82em;">Supply as of block <?php echo is_numeric($syncHeightValue) ? number_format((int) $syncHeightValue) : htmlspecialchars($syncHeightValue, ENT_QUOTES); ?>.<?php if ($analysisUpdated): ?> Analysis updated <?php $age = max(0, time() - $analysisUpdated); echo $age < 3600 ? max(1, round($age / 60)) . 'm' : round($age / 3600) . 'h'; ?> ago<?php if (!empty($stats['refresh_sec'])): ?>, refreshing about every <?php echo max(1, (int) round($stats['refresh_sec'] / 60)); ?>&nbsp;min<?php endif; ?>.<?php endif; ?></p>
         </div>
         <div class="search-box" style="max-width:680px;">
             <div style="background:var(--card); box-shadow:0 0 10px var(--shadow); border-radius:8px; padding:16px; text-align:left;">
