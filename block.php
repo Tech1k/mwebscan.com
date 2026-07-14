@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/lib/db.php';
+require __DIR__ . '/lib/trace_engine.php';
 
 $db = mwebscan_db();
 $q = isset($_GET['q']) ? trim($_GET['q']) : '';
