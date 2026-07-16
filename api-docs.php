@@ -47,7 +47,7 @@
             <ul>
                 <li><strong>Base URL:</strong> <code><?php echo mwebscan_base_url(); ?>/api</code> (<code>/api.php</code> also works if a deployment lacks URL rewriting)</li>
                 <li><strong>Routing:</strong> path <code>/api/&lt;endpoint&gt;</code> (e.g. <code>/api/stats</code>), or query <code>?endpoint=&lt;name&gt;</code>.</li>
-                <li><strong>Format:</strong> JSON by default; add <code>&amp;format=csv</code> to <code>trace</code>, <code>links</code>, <code>pegin_amounts</code> to download a CSV.</li>
+                <li><strong>Format:</strong> JSON by default; add <code>&amp;format=csv</code> to <code>trace</code>, <code>links</code>, <code>pegin_amounts</code>, <code>pegout_amounts</code> to download a CSV.</li>
                 <li><strong>Rate limit:</strong> ~60 requests/minute per IP (HTTP <code>429</code> if exceeded). Use is subject to the <a href="/terms">Terms</a>.</li>
                 <li><strong>CORS:</strong> open (<code>Access-Control-Allow-Origin: *</code>), so it works from the browser.</li>
                 <li><strong>License:</strong> API output is MWEBscan-generated data under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (attribution required; third-party labels keep their own terms). See <a href="https://github.com/Tech1k/mwebscan.com/blob/HEAD/LICENSING.md" target="_blank" rel="noopener">LICENSING.md</a>.</li>
@@ -89,11 +89,12 @@
             </div>
 
             <div class="ep">
-                <h3><span class="get">GET</span> /api/privacy?amount=&lt;ltc&gt;</h3>
-                <p class="params"><strong>amount</strong>: positive <?php echo mwebscan_unit(); ?> value.</p>
-                <p>Wallet pre-flight check: how well a peg-in of this amount blends in (anonymity set + privacy score + advice). Amount only, so no address leaves the client.</p>
+                <h3><span class="get">GET</span> /api/privacy?amount=&lt;ltc&gt;&amp;side=&lt;pegin|pegout&gt;</h3>
+                <p class="params"><strong>amount</strong>: positive <?php echo mwebscan_unit(); ?> value. &nbsp;<strong>side</strong>: <code>pegin</code> (default) or <code>pegout</code>.</p>
+                <p>Wallet pre-flight check, amount only (no address leaves the client). <code>side=pegin</code> rates how well an <em>entry</em> amount blends in; <code>side=pegout</code> rates the <em>exit</em> &mdash; peg-out anonymity set (<code>exit_set</code>/<code>exit_exact_set</code>) plus how linkable it is back to a peg-in (<code>matching_pegins</code>).</p>
                 <pre>curl "<?php echo mwebscan_base_url(); ?>/api/privacy?amount=1.0"</pre>
                 <pre>{
+  "side": "pegin",
   "privacy": {
     "amount": 1.0, "rounded": 1.0,
     "rounded_set": 842, "exact_set": 137,
@@ -164,6 +165,13 @@
                 <p class="params"><strong>limit</strong>: 1-500 (default 100). &nbsp;Optional <strong>format=csv</strong>.</p>
                 <p>Most common (rounded) peg-in amounts and their counts (the "blend in with the crowd" data).</p>
                 <pre>curl "<?php echo mwebscan_base_url(); ?>/api/pegin_amounts?limit=50"</pre>
+            </div>
+
+            <div class="ep">
+                <h3><span class="get">GET</span> /api/pegout_amounts?limit=100</h3>
+                <p class="params"><strong>limit</strong>: 1-500 (default 100). &nbsp;Optional <strong>format=csv</strong>.</p>
+                <p>Most common (rounded) peg-out amounts and their counts &mdash; the exit-side "blend in with the crowd" data.</p>
+                <pre>curl "<?php echo mwebscan_base_url(); ?>/api/pegout_amounts?limit=50"</pre>
             </div>
 
             <h2>Wallet integration</h2>

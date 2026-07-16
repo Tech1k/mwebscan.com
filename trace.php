@@ -108,10 +108,20 @@ function entity_badge($attr)
             <?php if ($trace['type'] === 'amount' && $trace['amount_privacy']): ?>
                 <?php $ap = $trace['amount_privacy']; $pc = $ap['privacy_score'] >= 70 ? 'var(--ok)' : ($ap['privacy_score'] >= 40 ? 'var(--warn)' : 'var(--risk)'); ?>
                 <div class="node" style="max-width:640px; margin:0 auto 10px; text-align:center;">
-                    <h3>Amount privacy: <?php echo htmlspecialchars(number_format($ap['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></h3>
+                    <h3>Peg-in amount privacy: <?php echo htmlspecialchars(number_format($ap['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></h3>
                     <p style="margin:4px 0;">Privacy score: <strong style="color:<?php echo $pc; ?>;"><?php echo (int) $ap['privacy_score']; ?>/100</strong> (<?php echo htmlspecialchars($ap['rating'], ENT_QUOTES); ?>)</p>
                     <p style="margin:4px 0;">Anonymity set: <strong><?php echo number_format($ap['rounded_set']); ?></strong> peg-ins (rounded) &middot; <strong><?php echo number_format($ap['exact_set']); ?></strong> exact</p>
                     <p style="margin:6px 0 0; color:var(--muted);"><?php echo htmlspecialchars($ap['advice'], ENT_QUOTES); ?></p>
+                </div>
+            <?php endif; ?>
+            <?php if ($trace['type'] === 'amount' && !empty($trace['pegout_amount_privacy'])): ?>
+                <?php $op = $trace['pegout_amount_privacy']; $oc = $op['privacy_score'] >= 70 ? 'var(--ok)' : ($op['privacy_score'] >= 40 ? 'var(--warn)' : 'var(--risk)'); ?>
+                <div class="node" style="max-width:640px; margin:0 auto 10px; text-align:center;">
+                    <h3>Peg-out amount privacy: <?php echo htmlspecialchars(number_format($op['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></h3>
+                    <p style="margin:4px 0;">Exit privacy score: <strong style="color:<?php echo $oc; ?>;"><?php echo (int) $op['privacy_score']; ?>/100</strong> (<?php echo htmlspecialchars($op['rating'], ENT_QUOTES); ?>)</p>
+                    <p style="margin:4px 0;">Exit anonymity set: <strong><?php echo number_format($op['exit_set']); ?></strong> peg-outs (rounded) &middot; <strong><?php echo number_format($op['exit_exact_set']); ?></strong> exact</p>
+                    <p style="margin:4px 0;">Peg-ins this exit could link back to: <strong><?php echo number_format($op['matching_pegins']); ?></strong></p>
+                    <p style="margin:6px 0 0; color:var(--muted);"><?php echo htmlspecialchars($op['advice'], ENT_QUOTES); ?></p>
                 </div>
             <?php endif; ?>
 

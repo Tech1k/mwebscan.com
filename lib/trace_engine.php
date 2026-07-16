@@ -18,6 +18,13 @@ if (!defined('MWEBSCAN_TRACE_MAX_NODES')) {
     define('MWEBSCAN_TRACE_MAX_NODES', 25);
 }
 
+// Round-trip amount tolerance in LTC, mirroring mwebanalysis.py
+// (AMOUNT_TOLERANCE_LTC): a peg-out of X is linked to peg-ins with an amount in
+// [X, X + tolerance]. Used to report how linkable an exit amount is.
+if (!defined('MWEBSCAN_AMOUNT_TOLERANCE')) {
+    define('MWEBSCAN_AMOUNT_TOLERANCE', 0.002);
+}
+
 /**
  * Privacy of pegging in a given amount: how well it blends into the peg-ins at
  * that rounded amount. Shared by the homepage tool and the API privacy endpoint.
@@ -54,6 +61,77 @@ function mwebscan_amount_privacy($db, $amount)
         'rounded' => round($amount, 1),
         'rounded_set' => $rounded,
         'exact_set' => $exact,
+        'privacy_score' => $score,
+        'rating' => $rating,
+        'advice' => $advice,
+    ];
+}
+
+/**
+ * Privacy of pegging OUT a given amount: the peg-out twin of
+ * mwebscan_amount_privacy. Two dimensions: (1) exit anonymity -- how many
+ * peg-outs share the rounded amount, so how well the exit blends in; and (2)
+ * round-trip linkability -- how many peg-ins the amount would match, since an
+ * exit that pins back to one or two entries is trivially traceable. The score
+ * rewards exit blend-in and is tempered when the exit is easily linked back.
+ */
+function mwebscan_pegout_amount_privacy($db, $amount)
+{
+    $amount = (float) $amount;
+    if ($amount <= 0) {
+        return null;   // 0 / negative is not a real peg-out amount
+    }
+
+    // Exit anonymity set: peg-outs sharing the rounded (0.1) amount. Sargable
+    // range so idx_pegouts_amount is used instead of a full-table scan.
+    $bucket = round($amount, 1);
+    $st = $db->prepare("SELECT COUNT(*) FROM mweb_pegouts WHERE amount >= ? AND amount < ?");
+    $st->execute([$bucket - 0.05, $bucket + 0.05]);
+    $exitSet = (int) $st->fetchColumn();
+
+    $st = $db->prepare("SELECT COUNT(*) FROM mweb_pegouts WHERE amount = ?");
+    $st->execute([$amount]);
+    $exitExact = (int) $st->fetchColumn();
+
+    // Round-trip linkability: peg-ins this exit amount could match (amount in
+    // [X, X + tolerance], mirroring the linker). Few matches => the exit points
+    // back to a specific entry; many => the round-trip is ambiguous.
+    $st = $db->prepare("SELECT COUNT(*) FROM mweb_pegins WHERE amount >= ? AND amount <= ?");
+    $st->execute([$amount, $amount + MWEBSCAN_AMOUNT_TOLERANCE]);
+    $matchingPegins = (int) $st->fetchColumn();
+
+    // Score on exit blend-in (same curve as the peg-in tool), then halve it when
+    // only a handful of peg-ins match, since that makes the round-trip easy to
+    // reconstruct regardless of how the exit amount blends in.
+    $factor = $exitSet > 0 ? min(1.0, log10(1 + $exitSet) / log10(1 + 500)) : 0.0;
+    $score = (int) round($factor * 100);
+    if ($matchingPegins > 0 && $matchingPegins <= 3) {
+        $score = (int) round($score * 0.5);
+    }
+    $score = max(0, min(100, $score));
+
+    if ($score >= 80)      { $rating = 'Excellent'; }
+    elseif ($score >= 55)  { $rating = 'Good'; }
+    elseif ($score >= 30)  { $rating = 'Moderate'; }
+    elseif ($score >= 10)  { $rating = 'Weak'; }
+    else                   { $rating = 'Very weak'; }
+
+    if ($matchingPegins === 0) {
+        $advice = 'No peg-in matches this exit amount within tolerance, so a direct round-trip is unlikely; cover still depends on how many peg-outs share the amount.';
+    } elseif ($matchingPegins <= 3) {
+        $advice = 'Only ' . $matchingPegins . ' peg-in(s) match this exit amount, so a round-trip is easy to reconstruct. Move or split funds inside MWEB first, or exit a common, rounded amount.';
+    } elseif ($exitSet >= 100) {
+        $advice = 'A common exit amount with a healthy peg-out crowd; you blend in well on the way out.';
+    } else {
+        $advice = 'Usable, but a rounder, more common exit amount gives better cover among peg-outs.';
+    }
+
+    return [
+        'amount' => $amount,
+        'rounded' => round($amount, 1),
+        'exit_set' => $exitSet,
+        'exit_exact_set' => $exitExact,
+        'matching_pegins' => $matchingPegins,
         'privacy_score' => $score,
         'rating' => $rating,
         'advice' => $advice,
@@ -320,6 +398,7 @@ function mwebscan_trace($db, $q)
         'attribution' => null,
         'cluster' => null,
         'amount_privacy' => null,
+        'pegout_amount_privacy' => null,
         'pegins' => [],
         'pegouts' => [],
     ];
@@ -331,6 +410,7 @@ function mwebscan_trace($db, $q)
     if ($type === 'amount') {
         $amount = (float) $q;
         $result['amount_privacy'] = mwebscan_amount_privacy($db, $amount);
+        $result['pegout_amount_privacy'] = mwebscan_pegout_amount_privacy($db, $amount);
 
         $st = $db->prepare("SELECT txid FROM mweb_pegins WHERE amount = ? ORDER BY block_height DESC LIMIT 25");
         $st->execute([$amount]);

@@ -15,6 +15,9 @@ $randomPegins = mwebscan_cached($db, 'pegin_dist_exact',
 $standardizedPegouts = mwebscan_cached($db, 'pegout_dist_rounded',
     "SELECT ROUND(amount, 1) as amount, COUNT(*) as count FROM mweb_pegouts GROUP BY ROUND(amount, 1) ORDER BY count DESC, amount ASC");
 
+$randomPegouts = mwebscan_cached($db, 'pegout_dist_exact',
+    "SELECT amount, COUNT(*) as count FROM mweb_pegouts GROUP BY amount ORDER BY count DESC, amount DESC LIMIT 2000");
+
 // Reused peg-out addresses are a deanonymisation signal.
 $topPegoutAddresses = mwebscan_cached($db, 'top_pegout_addresses',
     "SELECT address, COUNT(*) as count, SUM(amount) as total FROM mweb_pegouts WHERE address IS NOT NULL GROUP BY address HAVING count > 1 ORDER BY count DESC, total DESC LIMIT 100");
@@ -101,6 +104,9 @@ try {
 $lookupAmount = isset($_GET['amount']) && is_numeric($_GET['amount']) ? (float) $_GET['amount'] : null;
 $lookup = ($lookupAmount !== null && $lookupAmount > 0)
     ? mwebscan_amount_privacy($db, $lookupAmount)
+    : null;
+$lookupOut = ($lookupAmount !== null && $lookupAmount > 0)
+    ? mwebscan_pegout_amount_privacy($db, $lookupAmount)
     : null;
 
 $recommendations = mwebscan_cache_get($db, 'recommendations');
@@ -218,19 +224,29 @@ try {
                     <button type="submit" class="toggle-button">Trace</button>
                 </form>
                 <form method="get" action="/" id="privacyTool" class="search-row">
-                    <label for="q-amount">Check how private a peg-in amount is</label>
+                    <label for="q-amount">Check how private a peg-in or peg-out amount is</label>
                     <input id="q-amount" type="number" name="amount" step="0.00000001" min="0" placeholder="e.g. 1.0" value="<?php echo $lookupAmount !== null ? htmlspecialchars($lookupAmount, ENT_QUOTES) : ''; ?>">
                     <button type="submit" class="toggle-button">Check</button>
                 </form>
             </div>
             <?php if ($lookup !== null): ?>
                 <div style="background:var(--card); box-shadow:0 0 10px var(--shadow); padding:16px; margin-top:12px; border-radius:6px; text-align:left;">
-                    <p style="margin:4px 0;"><strong><?php echo htmlspecialchars(number_format($lookup['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></strong></p>
+                    <p style="margin:4px 0;">Pegging in <strong><?php echo htmlspecialchars(number_format($lookup['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></strong></p>
                     <?php $ps = (int) $lookup['privacy_score']; $pc = $ps >= 70 ? 'var(--ok)' : ($ps >= 40 ? 'var(--warn)' : 'var(--risk)'); ?>
                     <p style="margin:4px 0;">Privacy score: <strong style="color:<?php echo $pc; ?>;"><?php echo $ps; ?>/100</strong> (<?php echo htmlspecialchars($lookup['rating'], ENT_QUOTES); ?>)</p>
                     <p style="margin:4px 0;">Anonymity set (rounded to <?php echo htmlspecialchars(number_format($lookup['rounded'], 1), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?>): <strong><?php echo number_format($lookup['rounded_set']); ?></strong> peg-ins</p>
                     <p style="margin:4px 0;">Exact-amount matches: <strong><?php echo number_format($lookup['exact_set']); ?></strong> peg-ins</p>
                     <p style="margin:8px 0 0; color:var(--muted);"><?php echo htmlspecialchars($lookup['advice'], ENT_QUOTES); ?></p>
+                </div>
+            <?php endif; ?>
+            <?php if ($lookupOut !== null): ?>
+                <div style="background:var(--card); box-shadow:0 0 10px var(--shadow); padding:16px; margin-top:12px; border-radius:6px; text-align:left;">
+                    <p style="margin:4px 0;">Pegging out <strong><?php echo htmlspecialchars(number_format($lookupOut['amount'], 8), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?></strong></p>
+                    <?php $os = (int) $lookupOut['privacy_score']; $oc = $os >= 70 ? 'var(--ok)' : ($os >= 40 ? 'var(--warn)' : 'var(--risk)'); ?>
+                    <p style="margin:4px 0;">Exit privacy score: <strong style="color:<?php echo $oc; ?>;"><?php echo $os; ?>/100</strong> (<?php echo htmlspecialchars($lookupOut['rating'], ENT_QUOTES); ?>)</p>
+                    <p style="margin:4px 0;">Exit anonymity set (rounded to <?php echo htmlspecialchars(number_format($lookupOut['rounded'], 1), ENT_QUOTES); ?> <?php echo mwebscan_unit(); ?>): <strong><?php echo number_format($lookupOut['exit_set']); ?></strong> peg-outs</p>
+                    <p style="margin:4px 0;">Peg-ins this exit could link back to: <strong><?php echo number_format($lookupOut['matching_pegins']); ?></strong></p>
+                    <p style="margin:8px 0 0; color:var(--muted);"><?php echo htmlspecialchars($lookupOut['advice'], ENT_QUOTES); ?></p>
                 </div>
             <?php endif; ?>
         </div>
@@ -386,6 +402,29 @@ try {
                                 <td class="count"><?php echo htmlspecialchars($row['count'], ENT_QUOTES); ?></td>
                             </tr>
                         <?php endif; ?>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-title">
+            <button id="toggleRandomPegoutTable" class="toggle-button">Show Unique (non-rounded) Peg-Outs</button>
+        </div>
+        <div id="randomPegoutContainer" style="display: none;">
+            <p style="text-align:center; color:var(--muted); font-size:0.85em;">Showing up to the 2,000 most frequent unique amounts.</p>
+            <table id="randomPegoutTable">
+                <thead>
+                    <tr>
+                        <th>Amount (<?php echo mwebscan_unit(); ?>)</th>
+                        <th>Occurrences</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($randomPegouts as $row): ?>
+                        <tr>
+                            <td class="amount"><?php echo htmlspecialchars(number_format($row['amount'], 8), ENT_QUOTES); ?></td>
+                            <td class="count"><?php echo htmlspecialchars($row['count'], ENT_QUOTES); ?></td>
+                        </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
@@ -650,6 +689,7 @@ try {
             var randomPager = paginateTable("randomTable", 50);
             paginateTable("rareStandardizedTable", 50);
             paginateTable("rarePegoutTable", 50);
+            paginateTable("randomPegoutTable", 50);
             paginateTable("pegoutAddressTable", 50);
             paginateTable("reuseTable", 50);
             paginateTable("linksTable", 25);
@@ -690,6 +730,7 @@ try {
                 ["toggleRandomTable", "randomTableContainer", "Unique (non-rounded) Peg-Ins"],
                 ["toggleRareStandardized", "rareStandardizedContainer", "Low Occurrence (<<?php echo $minCommon; ?> count) Peg-Ins"],
                 ["toggleRarePegout", "rarePegoutContainer", "Low Occurrence (<<?php echo $minCommon; ?> count) Peg-Outs"],
+                ["toggleRandomPegoutTable", "randomPegoutContainer", "Unique (non-rounded) Peg-Outs"],
                 ["togglePegoutAddresses", "pegoutAddressContainer", "Most-Reused Peg-Out Addresses"],
                 ["toggleReuse", "reuseContainer", "Address-Reuse Links (Public Identity <-> MWEB Exit)"],
             ].forEach(function (cfg) {

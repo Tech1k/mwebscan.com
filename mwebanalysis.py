@@ -604,6 +604,7 @@ def compute_cache(cur):
         'pegin_dist_rounded': "SELECT ROUND(amount,1) AS amount, COUNT(*) AS count FROM mweb_pegins GROUP BY ROUND(amount,1) ORDER BY count DESC, amount ASC",
         'pegin_dist_exact': "SELECT amount, COUNT(*) AS count FROM mweb_pegins GROUP BY amount ORDER BY count DESC, amount DESC LIMIT 2000",
         'pegout_dist_rounded': "SELECT ROUND(amount,1) AS amount, COUNT(*) AS count FROM mweb_pegouts GROUP BY ROUND(amount,1) ORDER BY count DESC, amount ASC",
+        'pegout_dist_exact': "SELECT amount, COUNT(*) AS count FROM mweb_pegouts GROUP BY amount ORDER BY count DESC, amount DESC LIMIT 2000",
         'top_pegout_addresses': "SELECT address, COUNT(*) AS count, SUM(amount) AS total FROM mweb_pegouts WHERE address IS NOT NULL GROUP BY address HAVING count > 1 ORDER BY count DESC, total DESC LIMIT 500",
         'timeseries_daily': "SELECT CAST(block_time/86400 AS INT) AS day, MAX(block_height) AS height, AVG(supply) AS supply, SUM(pegin_amount) AS pegin, SUM(pegout_amount) AS pegout, SUM(pegin_count) AS pegins, SUM(pegout_count) AS pegouts, MAX(mweb_txos) AS utxos, SUM(mweb_kernels) AS kernels FROM mweb_blocks WHERE block_time IS NOT NULL GROUP BY day ORDER BY day",
     }

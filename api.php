@@ -282,7 +282,14 @@ switch ($endpoint) {
         if (!isset($_GET['amount']) || !is_numeric($_GET['amount']) || $_GET['amount'] <= 0) {
             err('amount (positive number) required');
         }
-        out(['privacy' => mwebscan_amount_privacy($db, (float) $_GET['amount'])]);
+        // side=pegin (default) rates how well an entry amount blends in; side=pegout
+        // rates the exit (peg-out anonymity set + how linkable it is to a peg-in).
+        $side = (($_GET['side'] ?? 'pegin') === 'pegout') ? 'pegout' : 'pegin';
+        $amt = (float) $_GET['amount'];
+        $privacy = $side === 'pegout'
+            ? mwebscan_pegout_amount_privacy($db, $amt)
+            : mwebscan_amount_privacy($db, $amt);
+        out(['side' => $side, 'privacy' => $privacy]);
 
     case 'recommendations':
         out(['recommendations' => mwebscan_cache_get($db, 'recommendations')]);
@@ -400,6 +407,28 @@ switch ($endpoint) {
         }
         unset($row);
         out(['count' => count($rows), 'pegin_amounts' => $rows]);
+
+    case 'pegout_amounts':
+        $limit = clamp_limit($_GET['limit'] ?? null);
+        $st = $db->prepare("
+            SELECT ROUND(amount, 1) AS amount, COUNT(*) AS count
+            FROM mweb_pegouts
+            GROUP BY ROUND(amount, 1)
+            ORDER BY count DESC, amount ASC
+            LIMIT ?
+        ");
+        $st->execute([$limit]);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        if ($format === 'csv') {
+            csv_out('mwebscan_pegout_amounts.csv', ['amount', 'count'],
+                array_map(fn($r) => [$r['amount'], $r['count']], $rows));
+        }
+        foreach ($rows as &$row) {
+            $row['amount'] = $row['amount'] + 0;
+            $row['count'] = (int) $row['count'];
+        }
+        unset($row);
+        out(['count' => count($rows), 'pegout_amounts' => $rows]);
 
     case 'block':
         // Per-block MWEB *analysis overlay*: the inferences an explorer can't
