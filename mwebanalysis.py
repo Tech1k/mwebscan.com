@@ -483,17 +483,20 @@ def compute_scores(cur, attribution):
         anon_by_amount[key] = anon_by_amount.get(key, 0) + 1
     anon_denom = math.log10(1 + ANON_TARGET)
 
-    # Strongest link confidence per peg-in, and per peg-out output. Key peg-outs by
-    # (txid, vout): all peg-outs in a block share the HogEx txid, so txid alone
-    # would collide and misattribute confidence across vouts.
-    pegin_max_conf = {}
+    # Strongest link confidence per peg-in output and per peg-out output. Key BOTH
+    # by (txid, vout): all peg-outs in a block share the HogEx txid, and one
+    # funding tx can emit several peg-in outputs -- keying by txid alone would
+    # bleed a link's confidence (and the "linked at N%" reason and depressed
+    # privacy score) onto the unlinked sibling outputs, a false deanonymisation.
+    pegin_max_conf = {}  # (pegin_txid, pegin_vout) -> strongest link confidence
     pegout_conf = {}     # (pegout_txid, pegout_vout) -> (confidence, pegin_txid)
-    cur.execute("SELECT pegin_txid, pegout_txid, pegout_vout, confidence FROM mweb_links")
-    for pegin_txid, pegout_txid, pegout_vout, conf in cur.fetchall():
+    cur.execute("SELECT pegin_txid, pegin_vout, pegout_txid, pegout_vout, confidence FROM mweb_links")
+    for pegin_txid, pegin_vout, pegout_txid, pegout_vout, conf in cur.fetchall():
         if conf is None:
             continue
-        if conf > pegin_max_conf.get(pegin_txid, 0):
-            pegin_max_conf[pegin_txid] = conf
+        pin_key = (pegin_txid, pegin_vout)
+        if conf > pegin_max_conf.get(pin_key, 0):
+            pegin_max_conf[pin_key] = conf
         pegout_conf[(pegout_txid, pegout_vout)] = (conf, pegin_txid)
 
     # Address-reuse participants.
@@ -519,7 +522,7 @@ def compute_scores(cur, attribution):
     for txid, vout, amount, height, source in cur.fetchall():
         anon = anon_by_amount.get(round(amount or 0.0, 1), 1)
         anon_factor = min(1.0, math.log10(1 + anon) / anon_denom)
-        link_pen = pegin_max_conf.get(txid, 0.0)
+        link_pen = pegin_max_conf.get((txid, vout), 0.0)
         reused = 1 if txid in reused_pegins else 0
         src_risk, src_entity = entity_risk(source)
         entity_pen = 0.3 if src_entity else 0.0
@@ -561,7 +564,11 @@ def compute_scores(cur, attribution):
         if linked_pegin and linked_pegin in pegin_source:
             src_risk, _ = entity_risk(pegin_source[linked_pegin])
 
-        entity_risk_val = max(dest_risk, src_risk)
+        # dest_risk is direct (the peg-out's own destination address); src_risk is
+        # carried across an INFERRED round-trip link, so weight it by the link
+        # confidence. Otherwise a coincidental amount-match to a sanctioned peg-in
+        # stamps full sanctioned-tier risk on an otherwise-unremarkable peg-out.
+        entity_risk_val = max(dest_risk, src_risk * conf)
         reused = 1 if (txid, vout) in reused_pegouts else 0
         reuse_bump = 0.15 * reused
 

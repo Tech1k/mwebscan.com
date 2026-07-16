@@ -614,6 +614,17 @@ def check_reorg():
     Walks back from the tip in widening windows until a stored hash still
     matches the node, then rolls back to that common ancestor. Handles reorgs
     deeper than REORG_DEPTH."""
+    # The node can briefly sit below our stored tip (it lags, or was just
+    # repointed). Heights above its tip are not a fork -- it simply lacks them --
+    # and probing getblockhash for an out-of-range height returns an RPC error
+    # that would abort the whole poll. Fetch the node tip once; skip this check
+    # (retry next poll) if the node is unreachable or still behind our tip. A
+    # genuine shorter-chain reorg still surfaces as a hash mismatch here once the
+    # node re-passes these heights.
+    try:
+        node_tip = rpc_request('getblockcount', [])
+    except Exception:
+        return
     depth = REORG_DEPTH
     while True:
         rows = cursor.execute('''
@@ -622,6 +633,8 @@ def check_reorg():
         ''', (depth,)).fetchall()
         if not rows:
             return
+        if rows[0][0] > node_tip:
+            return   # node behind our tip; wait for it to catch up
 
         for height, stored_hash in rows:  # newest first
             if rpc_request('getblockhash', [height]) == stored_hash:
@@ -662,6 +675,10 @@ def poll_for_blocks(interval=POLL_INTERVAL):
 
 
 if __name__ == "__main__":
+    if 'LTC_RPC_PASSWORD' not in os.environ:
+        print("[warn] LTC_RPC_PASSWORD is unset; using the built-in default RPC "
+              "credentials. Fine only for a loopback node configured with the "
+              "same -- set LTC_RPC_USER/LTC_RPC_PASSWORD otherwise.")
     try:
         init_db()
         scan_blocks()       # bulk catch-up, no secondary indexes yet

@@ -55,6 +55,25 @@ function rate_limit($limit, $window = 60)
     // Store a salted hash of the IP, never the raw address, and keep only the
     // current + previous window (rows expire within ~2 minutes).
     $raw = $_SERVER['REMOTE_ADDR'] ?? 'cli';
+    // Aggregate IPv6 to its /64 network before hashing: a client with a routed
+    // prefix (a typical allocation is a /64 = 2^64 addresses) could otherwise
+    // rotate source addresses to evade the per-IP limit. IPv4 keeps the full
+    // address.
+    if (strpos($raw, ':') !== false) {
+        $packed = @inet_pton($raw);
+        if ($packed !== false && strlen($packed) === 16) {
+            if (substr($packed, 0, 12) === str_repeat("\x00", 10) . "\xff\xff") {
+                // IPv4-mapped (::ffff:a.b.c.d), how IPv4 clients appear on a
+                // dual-stack socket: key on the embedded IPv4 in full, NOT a
+                // /64, else every IPv4 client collapses into one ::/64 bucket.
+                $raw = inet_ntop(substr($packed, 12, 4));
+            } else {
+                // Genuine IPv6: aggregate to the /64 network so a client can't
+                // rotate addresses within its prefix to evade the per-IP limit.
+                $raw = inet_ntop(substr($packed, 0, 8) . str_repeat("\x00", 8)) . '/64';
+            }
+        }
+    }
     // Salt from MWEBSCAN_RATE_SALT, else a random salt persisted to .rate_salt,
     // else a per-process random salt. Hashes stay unreversible either way.
     $salt = getenv('MWEBSCAN_RATE_SALT');
@@ -67,6 +86,13 @@ function rate_limit($limit, $window = 60)
             $salt = bin2hex(random_bytes(32));
             if (@file_put_contents($saltFile, $salt, LOCK_EX) !== false) {
                 @chmod($saltFile, 0600);
+            } else {
+                // Could not persist the salt, so it differs every request: per-IP
+                // buckets never accumulate and rate limiting is effectively off.
+                // Surface the misconfiguration instead of silently degrading.
+                error_log('MWEBscan: cannot persist .rate_salt and MWEBSCAN_RATE_SALT '
+                    . 'is unset; per-IP rate limiting is degraded. Set '
+                    . 'MWEBSCAN_RATE_SALT or make the app directory writable.');
             }
         }
     }
@@ -110,7 +136,9 @@ function rate_limit($limit, $window = 60)
             err('rate limit exceeded', 429);
         }
     } catch (Exception $e) {
-        // A limiter error must not take down the API.
+        // A limiter error must not take down the API, but log it so a persistent
+        // fail-open (e.g. the rate DB unwritable) is visible rather than silent.
+        error_log('MWEBscan rate limiter error (failing open): ' . $e->getMessage());
     }
 }
 
@@ -152,22 +180,12 @@ try {
     err('database unavailable', 503);
 }
 
-// Metadata attached to every response by out(): the active network (so a
-// misconfigured client fails loudly instead of trusting mainnet data on a
-// testnet page) and data-freshness cursors (scan height + analysis timestamp).
+// The active network is attached to every response (so a misconfigured client
+// fails loudly instead of trusting mainnet data on a testnet page). The
+// data-freshness cursors (scan height + analysis timestamp) are added AFTER the
+// auth + rate gates below, so a key-gated private instance does not leak its
+// sync state to unauthenticated callers via 401/403 error bodies.
 $GLOBALS['API_META'] = ['network' => mwebscan_network()];
-try {
-    $GLOBALS['API_META']['as_of_height'] =
-        (int) $db->query("SELECT last_scanned_block FROM scan_progress WHERE id=1")->fetchColumn();
-} catch (Exception $e) {
-    $GLOBALS['API_META']['as_of_height'] = null;
-}
-try {
-    $u = $db->query("SELECT MAX(updated) FROM cache")->fetchColumn();
-    $GLOBALS['API_META']['updated_at'] = ($u === false || $u === null) ? null : (int) $u;
-} catch (Exception $e) {
-    $GLOBALS['API_META']['updated_at'] = null;
-}
 
 // Disabled over the Tor onion service: every request there arrives from the
 // loopback IP, so per-IP rate limiting collapses into one shared bucket.
@@ -185,6 +203,21 @@ if ($REQUIRED_KEY !== '') {
 
 if ($RATE_LIMIT > 0 && !in_array($_SERVER['REMOTE_ADDR'] ?? '', $RATE_ALLOW_IPS, true)) {
     rate_limit($RATE_LIMIT);
+}
+
+// Past the auth + rate gates: attach the data-freshness cursors, so only
+// authorised/allowed responses carry the instance's scan height and freshness.
+try {
+    $GLOBALS['API_META']['as_of_height'] =
+        (int) $db->query("SELECT last_scanned_block FROM scan_progress WHERE id=1")->fetchColumn();
+} catch (Exception $e) {
+    $GLOBALS['API_META']['as_of_height'] = null;
+}
+try {
+    $u = $db->query("SELECT MAX(updated) FROM cache")->fetchColumn();
+    $GLOBALS['API_META']['updated_at'] = ($u === false || $u === null) ? null : (int) $u;
+} catch (Exception $e) {
+    $GLOBALS['API_META']['updated_at'] = null;
 }
 
 $endpoint = $_GET['endpoint'] ?? 'index';

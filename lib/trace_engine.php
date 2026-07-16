@@ -11,6 +11,13 @@
  * a confidence score.
  */
 
+// Cap peg-in/peg-out nodes materialised per address trace so one query for a
+// busy (reused/exchange) address can't fan out into tens of thousands of DB
+// operations and exhaust the PHP-FPM pool. The amount branch already caps at 25.
+if (!defined('MWEBSCAN_TRACE_MAX_NODES')) {
+    define('MWEBSCAN_TRACE_MAX_NODES', 25);
+}
+
 /**
  * Privacy of pegging in a given amount: how well it blends into the peg-ins at
  * that rounded amount. Shared by the homepage tool and the API privacy endpoint.
@@ -20,8 +27,13 @@ function mwebscan_amount_privacy($db, $amount)
     if ($amount <= 0) {
         return null;   // 0 / negative is not a valid peg-in amount
     }
-    $st = $db->prepare("SELECT COUNT(*) FROM mweb_pegins WHERE ROUND(amount, 1) = ROUND(?, 1)");
-    $st->execute([$amount]);
+    // Sargable range instead of ROUND(amount,1)=ROUND(?,1): wrapping the column
+    // in ROUND() prevents idx_pegins_amount from being used and forces a full
+    // table scan on every unauthenticated request. The 0.1-wide bucket centred
+    // on the rounded amount matches the same rows via an index range seek.
+    $bucket = round((float) $amount, 1);
+    $st = $db->prepare("SELECT COUNT(*) FROM mweb_pegins WHERE amount >= ? AND amount < ?");
+    $st->execute([$bucket - 0.05, $bucket + 0.05]);
     $rounded = (int) $st->fetchColumn();
 
     $st = $db->prepare("SELECT COUNT(*) FROM mweb_pegins WHERE amount = ?");
@@ -50,9 +62,16 @@ function mwebscan_amount_privacy($db, $amount)
 
 function mwebscan_table_exists($db, $name)
 {
+    // Memoise per request: this is called in the trace hot loop (once per input,
+    // source and node), and table existence cannot change within a request, so
+    // the repeated sqlite_master probes are pure overhead.
+    static $cache = [];
+    if (isset($cache[$name])) {
+        return $cache[$name];
+    }
     $st = $db->prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?");
     $st->execute([$name]);
-    return (bool) $st->fetchColumn();
+    return $cache[$name] = (bool) $st->fetchColumn();
 }
 
 function mwebscan_attribution($db, $address)
@@ -71,6 +90,34 @@ function mwebscan_attribution($db, $address)
     $row = $st->fetch(PDO::FETCH_ASSOC);
     // Return the row even when unlabelled, so callers can use cluster_id.
     return $row ?: null;
+}
+
+/**
+ * Batch form of mwebscan_attribution: one `WHERE address IN (...)` query for
+ * many addresses, returning [address => row]. Used in the trace hot path so a
+ * node's inputs don't each trigger their own lookup (the N+1 that made a busy
+ * address an unauthenticated DoS vector).
+ */
+function mwebscan_attribution_map($db, array $addresses)
+{
+    $addresses = array_values(array_unique(array_filter(
+        $addresses,
+        static function ($a) { return $a !== null && $a !== ''; }
+    )));
+    if (!$addresses || !mwebscan_table_exists($db, 'address_attribution')) {
+        return [];
+    }
+    $ph = implode(',', array_fill(0, count($addresses), '?'));
+    $st = $db->prepare(
+        "SELECT address, entity, category, confidence, via, cluster_id
+         FROM address_attribution WHERE address IN ($ph)"
+    );
+    $st->execute($addresses);
+    $map = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $map[$row['address']] = $row;
+    }
+    return $map;
 }
 
 /** Decide what the query string refers to. */
@@ -158,14 +205,21 @@ function mwebscan_pegin_node($db, $txid)
         ");
         $st->execute([$txid]);
         $inputs = $st->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($inputs as &$in) {
-            $in['attribution'] = mwebscan_attribution($db, $in['address']);
-        }
-        unset($in);
     }
 
+    // Attribute every address in this node (inputs + funding source) in ONE
+    // query rather than two per address, so a node with 50 inputs costs a single
+    // lookup instead of ~100 -- the difference between a cheap trace and a DoS.
+    $attrAddrs = array_column($inputs, 'address');
+    $attrAddrs[] = $p['source_address'];
+    $attrMap = mwebscan_attribution_map($db, $attrAddrs);
+    foreach ($inputs as &$in) {
+        $in['attribution'] = $attrMap[$in['address']] ?? null;
+    }
+    unset($in);
+
     $p['inputs'] = $inputs;
-    $p['source_attribution'] = mwebscan_attribution($db, $p['source_address']);
+    $p['source_attribution'] = $attrMap[$p['source_address']] ?? null;
     $p['links'] = mwebscan_links_for_pegin($db, $txid);
 
     $p['score'] = null;
@@ -314,19 +368,21 @@ function mwebscan_trace($db, $q)
         }
 
         $peginTxids = [];
-        $st = $db->prepare("SELECT txid FROM mweb_pegins WHERE source_address = ? LIMIT 200");
+        $st = $db->prepare("SELECT txid FROM mweb_pegins WHERE source_address = ? ORDER BY block_height DESC LIMIT " . MWEBSCAN_TRACE_MAX_NODES);
         $st->execute([$q]);
         foreach ($st as $r) {
             $peginTxids[$r['txid']] = true;
         }
-        if (mwebscan_table_exists($db, 'pegin_inputs')) {
-            $st = $db->prepare("SELECT DISTINCT pegin_txid FROM pegin_inputs WHERE address = ? LIMIT 200");
+        if (count($peginTxids) < MWEBSCAN_TRACE_MAX_NODES && mwebscan_table_exists($db, 'pegin_inputs')) {
+            $st = $db->prepare("SELECT DISTINCT pegin_txid FROM pegin_inputs WHERE address = ? LIMIT " . MWEBSCAN_TRACE_MAX_NODES);
             $st->execute([$q]);
             foreach ($st as $r) {
                 $peginTxids[$r['pegin_txid']] = true;
             }
         }
-        foreach (array_keys($peginTxids) as $txid) {
+        // Hard cap the number of full nodes built, regardless of how many txids
+        // the two queries surfaced, so a heavily-reused address stays bounded.
+        foreach (array_slice(array_keys($peginTxids), 0, MWEBSCAN_TRACE_MAX_NODES) as $txid) {
             $node = mwebscan_pegin_node($db, $txid);
             if ($node) {
                 $result['pegins'][] = $node;
@@ -335,8 +391,7 @@ function mwebscan_trace($db, $q)
 
         $st = $db->prepare("
             SELECT txid, vout FROM mweb_pegouts WHERE address = ?
-            ORDER BY block_height DESC LIMIT 200
-        ");
+            ORDER BY block_height DESC LIMIT " . MWEBSCAN_TRACE_MAX_NODES);
         $st->execute([$q]);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
             $node = mwebscan_pegout_node($db, $r['txid'], $r['vout']);

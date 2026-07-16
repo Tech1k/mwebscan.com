@@ -285,6 +285,11 @@ def deserialize_tx(r):
     inputs_start = r.i
 
     in_count = r.varint()
+    # Bound against remaining bytes before allocating: each input needs >=41
+    # bytes on the wire, so a peer cannot declare a huge in_count to exhaust
+    # memory (mirrors the block-level tx_count guard in deserialize_block).
+    if in_count > r.remaining() // 41 + 1:
+        raise ValueError(f"implausible in_count {in_count} for {r.remaining()} bytes")
     vin = []
     for _ in range(in_count):
         prev_hash = r.read(32)
@@ -300,6 +305,12 @@ def deserialize_tx(r):
         vin.append(entry)
 
     out_count = r.varint()
+    # Each output needs >=9 bytes (u64 value + a script-length varint), so bound
+    # the count against what is left before building a dict per output; otherwise
+    # one transaction in a 32 MiB block can inflate into gigabytes of objects,
+    # all allocated before the merkle check, OOM-killing the scanner.
+    if out_count > r.remaining() // 9 + 1:
+        raise ValueError(f"implausible out_count {out_count} for {r.remaining()} bytes")
     vout = []
     for n in range(out_count):
         value = r.u64()
@@ -544,7 +555,14 @@ def get_headers(sock, locator_hashes, stop_hash=None):
             send_msg(sock, 'pong', data)
     r = Reader(data)
     out = []
-    for _ in range(r.varint()):
+    count = r.varint()
+    # A `headers` message carries at most MAX_HEADERS_RESULTS (2000) per the P2P
+    # protocol. Enforce that before the per-header scrypt PoW check, else a peer
+    # can pack a 32 MiB message with ~400k valid headers and pin this daemon on
+    # hundreds of thousands of scrypt computations (CPU-exhaustion DoS).
+    if count > 2000:
+        raise ValueError(f'peer sent too many headers ({count})')
+    for _ in range(count):
         hdr = r.read(80)
         r.varint()                                  # txn_count, always 0 in headers
         # Reject any header failing its own PoW, and require the batch to be
